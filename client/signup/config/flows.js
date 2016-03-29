@@ -49,6 +49,10 @@ function getPostsDestination( dependencies ) {
 	return '/posts/' + dependencies.siteSlug;
 }
 
+function getGuidesToursDestination( dependencies ) {
+	return `/stats/${ dependencies.siteSlug }?tour=main`;
+}
+
 const flows = {
 	/* Production flows*/
 
@@ -188,6 +192,13 @@ const flows = {
 		destination: '/me/next?welcome',
 		description: 'Signup flow for free site/account',
 		lastModified: '2015-10-30'
+	},
+
+	guidestours: {
+		steps: [ 'themes-headstart', 'domains-with-theme', 'plans', 'user' ],
+		destination: getGuidesToursDestination,
+		description: 'Headstarted regular flow, with GuidesTours enabled',
+		lastModified: '2016-02-29'
 	},
 
 	headstart: {
