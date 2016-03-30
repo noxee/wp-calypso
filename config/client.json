@@ -21,6 +21,7 @@
   "languages",
   "jetpack_min_version",
   "signup_url",
+  "guides_signup_url",
   "login_url",
   "logout_url",
   "siftscience_key",

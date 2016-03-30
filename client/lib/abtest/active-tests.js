@@ -105,4 +105,12 @@ module.exports = {
 		},
 		defaultVariation: 'original'
 	},
+	addNewWordPress: {
+		datestamp: '20160329',
+		variations: {
+			original: 90,
+			guided: 10,
+		},
+		defaultVariation: 'original'
+	},
 };

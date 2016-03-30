@@ -10,6 +10,7 @@ var React = require( 'react' ),
  */
 var AllSites = require( 'my-sites/all-sites' ),
 	analytics = require( 'analytics' ),
+	abtest = require( 'lib/abtest' ).abtest,
 	Button = require( 'components/button' ),
 	Card = require( 'components/card' ),
 	Notice = require( 'components/notice' ),
@@ -133,10 +134,11 @@ module.exports = React.createClass( {
 	},
 
 	addNewWordPressButton: function() {
+		const signupUrl = abtest( 'addNewWordPress' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
 		return (
 			<span className="current-site__add-new-site">
 				<Button compact borderless
-					href={ config( 'signup_url' ) + '?ref=calypso-selector' }
+					href={ signupUrl + '?ref=calypso-selector' }
 					onClick={ this.focusContent }
 				>
 					<Gridicon icon="add-outline" /> { this.translate( 'Add New WordPress' ) }
