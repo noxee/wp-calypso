@@ -2,13 +2,16 @@
  * External dependencies
  */
 import React, { Component, PropTypes } from 'react'
+import { connect } from 'react-redux';
 
 /**
  * Internal dependencies
  */
 import Card from 'components/card';
 import Button from 'components/button';
+import WebPreview from 'components/web-preview';
 import guideConfig from './config';
+import { getSelectedSite } from 'state/ui/selectors';
 
 // Magic numbers make me sad
 const BULLSEYE_RADIUS = 6;
@@ -189,7 +192,7 @@ export default class GuidesTours extends Component {
 		const pointerCoords = posToCss( bullseye );
 
 		return (
-			<div>
+			<div className="guidestours">
 				<GuidesStep
 						{ ...this.state.currentStep }
 						key={ this.state.target }
@@ -200,7 +203,14 @@ export default class GuidesTours extends Component {
 				{ this.state.currentStep.type === 'bullseye' &&
 					<GuidesPointer style={ pointerCoords } />
 				}
+				<WebPreview showPreview={ this.state.currentStep.showPreview } previewUrl={ this.props.selectedSite ? `${ this.props.selectedSite.URL }/?iframe=true&preview=true` : '' } />
 			</div>
 		);
 	}
 }
+
+export default connect( ( state ) => {
+	return {
+		selectedSite: getSelectedSite( state )
+	};
+} )( GuidesTours );

@@ -2,6 +2,7 @@ const config = {
 	init: {
 		text: 'Welcome to WordPress.com!',
 		next: 'my-sites',
+		showPreview: true,
 	},
 	'my-sites': {
 		target: 'my-sites',
