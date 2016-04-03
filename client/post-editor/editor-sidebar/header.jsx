@@ -21,7 +21,7 @@ import Gridicon from 'components/gridicon';
 import DraftsButton from 'post-editor/drafts-button';
 import PostCountsData from 'components/data/post-counts-data';
 
-function EditorSidebarHeader( { translate, type, siteId, showDrafts, toggleDrafts, allPostsUrl, toggleSidebar } ) {
+function EditorSidebarHeader( { translate, type, siteId, showDrafts, toggleDrafts, allPostsUrl } ) {
 	const className = classnames( 'editor-sidebar__header', {
 		'is-drafts-visible': showDrafts
 	} );
@@ -58,11 +58,6 @@ function EditorSidebarHeader( { translate, type, siteId, showDrafts, toggleDraft
 					<DraftsButton onClick={ toggleDrafts } />
 				</PostCountsData>
 			) }
-			<Button
-				onClick={ toggleSidebar }
-				className="editor-sidebar__toggle-sidebar">
-				<span>{ translate( 'Write' ) }</span>
-			</Button>
 		</div>
 	);
 }
@@ -73,8 +68,7 @@ EditorSidebarHeader.propTypes = {
 	siteId: PropTypes.number,
 	showDrafts: PropTypes.bool,
 	toggleDrafts: PropTypes.func,
-	allPostsUrl: PropTypes.string,
-	toggleSidebar: PropTypes.func
+	allPostsUrl: PropTypes.string
 };
 
 export default connect(
