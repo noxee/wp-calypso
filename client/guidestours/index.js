@@ -209,8 +209,6 @@ export default class GuidesTours extends Component {
 	}
 }
 
-export default connect( ( state ) => {
-	return {
-		selectedSite: getSelectedSite( state )
-	};
-} )( GuidesTours );
+export default connect( ( state ) => ( {
+	selectedSite: getSelectedSite( state ),
+} ) )( GuidesTours );

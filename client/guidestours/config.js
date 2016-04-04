@@ -9,6 +9,7 @@ const config = {
 		type: 'bullseye',
 		placement: 'below',
 		text: `First things first. Up here, you'll find tools for managing your site's content and design.`,
+		showPreview: true,
 		next: 'reader'
 	},
 	reader: {
