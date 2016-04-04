@@ -7,13 +7,12 @@ import PureRenderMixin from 'react-pure-render/mixin';
 /**
  * Internal dependencies
  */
+import localize from 'lib/mixins/i18n/localize';
 import stats from 'lib/posts/stats';
 import postUtils from 'lib/posts/utils';
 import siteUtils from 'lib/site/utils';
 
-export default React.createClass( {
-	displayName: 'EditorPublishButton',
-
+export const EditorPublishButton = React.createClass( {
 	propTypes: {
 		site: PropTypes.object,
 		post: PropTypes.object,
@@ -83,10 +82,10 @@ export default React.createClass( {
 
 	getButtonLabel: function() {
 		const buttonLabels = {
-			update: this.translate( 'Update' ),
-			schedule: this.translate( 'Schedule' ),
-			publish: this.translate( 'Publish' ),
-			requestReview: this.translate( 'Submit for Review' )
+			update: this.props.translate( 'Update' ),
+			schedule: this.props.translate( 'Schedule' ),
+			publish: this.props.translate( 'Publish' ),
+			requestReview: this.props.translate( 'Submit for Review' )
 		};
 		return buttonLabels[ this.getButtonState() ];
 	},
@@ -126,3 +125,5 @@ export default React.createClass( {
 		);
 	}
 } );
+
+export default localize( EditorPublishButton );

@@ -370,6 +370,12 @@
 		}
 	},
 	"post-editor": {
+		"editor-ground-control": {
+			"test": [ "index" ]
+		},
+		"editor-publish-button": {
+			"test": [ "index" ]
+		},
 		"test": [ "post-editor" ]
 	},
 	"reader": {
