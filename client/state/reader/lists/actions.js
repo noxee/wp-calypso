@@ -6,6 +6,9 @@ import {
 	READER_LIST_REQUEST,
 	READER_LIST_REQUEST_SUCCESS,
 	READER_LIST_REQUEST_FAILURE,
+	READER_LIST_UPDATE,
+	READER_LIST_UPDATE_SUCCESS,
+	READER_LIST_UPDATE_FAILURE,
 	READER_LISTS_RECEIVE,
 	READER_LISTS_REQUEST,
 	READER_LISTS_REQUEST_SUCCESS,
@@ -172,6 +175,45 @@ export function unfollowList( owner, slug ) {
 						type: READER_LISTS_UNFOLLOW_SUCCESS,
 						owner,
 						slug,
+						data
+					} );
+					resolve();
+				}
+			} );
+		} );
+	};
+}
+
+/**
+ * Triggers a network request to update a list's details.
+ *
+ * @param  {Object}  list List details to save
+ * @return {Function} Action promise
+ */
+export function updateListDetails( list ) {
+	if ( ! list || ! list.owner || ! list.slug || ! list.title ) {
+		throw new Error( 'List owner, slug and title are required' );
+	}
+
+	return ( dispatch ) => {
+		dispatch( {
+			type: READER_LIST_UPDATE,
+			list
+		} );
+
+		return new Promise( ( resolve, reject ) => {
+			wpcom.undocumented().readListsUpdate( list, ( error, data ) => {
+				if ( error ) {
+					dispatch( {
+						type: READER_LIST_UPDATE_FAILURE,
+						list,
+						error
+					} );
+					reject();
+				} else {
+					dispatch( {
+						type: READER_LIST_UPDATE_SUCCESS,
+						list,
 						data
 					} );
 					resolve();

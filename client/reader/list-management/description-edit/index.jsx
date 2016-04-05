@@ -16,6 +16,7 @@ import ReaderListsActions from 'lib/reader-lists/actions';
 import ReaderListsStore from 'lib/reader-lists/lists';
 import smartSetState from 'lib/react-smart-set-state';
 import Notice from 'components/notice';
+import { updateListDetails } from 'state/reader/lists/actions';
 
 const debug = debugModule( 'calypso:reader:list-management' );
 
@@ -72,7 +73,7 @@ const ListManagementDescriptionEdit = React.createClass( {
 			description: this.state.description
 		};
 
-		ReaderListsActions.update( params );
+		updateListDetails( params );
 	},
 
 	handleDismissNotice() {
