@@ -33,6 +33,14 @@ function getNextPageParams( store ) {
 
 FeedStreamActions = {
 
+	changeQuery: function( id, query ) {
+		Dispatcher.handleViewAction( {
+			type: ActionType.CHANGE_QUERY,
+			id: id,
+			query: query
+		} );
+	},
+
 	fetchNextPage: function( id ) {
 		var store = feedPostListCache.get( id ),
 			params;

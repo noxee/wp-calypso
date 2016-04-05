@@ -3,6 +3,7 @@
  */
 var Dispatcher = require( 'dispatcher' ),
 	FeedStream = require( './feed-stream' ),
+	PagedStream = require( './paged-stream' ),
 	FeedStreamCache = require( './feed-stream-cache' ),
 	wpcomUndoc = require( 'lib/wp' ).undocumented();
 
@@ -76,19 +77,14 @@ function getStoreForTag( storeId ) {
 }
 
 function getStoreForSearch( storeId ) {
-	var searchSlug = storeId.split( ':' )[ 1 ],
-		fetcher = function( query, callback ) {
-			query.q = searchSlug;
-			wpcomUndoc.readSearchPosts( query, callback );
-		};
+	var fetcher = function( query, callback ) {
+		wpcomUndoc.readSearch( query, callback );
+	};
 
-	return new FeedStream( {
+	return new PagedStream( {
 		id: storeId,
 		fetcher: fetcher,
-		keyMaker: siteKeyMaker,
-		onGapFetch: limitSiteParams,
-		onUpdateFetch: limitSiteParams,
-		dateProperty: 'tagged_on'
+		keyMaker: siteKeyMaker
 	} );
 }
 
@@ -181,7 +177,7 @@ function feedStoreFactory( storeId ) {
 		store = getStoreForSite( storeId );
 	} else if ( storeId.indexOf( 'featured:' ) === 0 ) {
 		store = getStoreForFeatured( storeId );
-	} else if ( storeId.indexOf( 'search:' ) === 0 ) {
+	} else if ( storeId === 'search' ) {
 		store = getStoreForSearch( storeId );
 	}else {
 		throw new Error( 'Unknown feed store ID' );

@@ -6,8 +6,10 @@ const ReactDom = require( 'react-dom' ),
 	page = require( 'page' ),
 	debug = require( 'debug' )( 'calypso:reader:controller' ),
 	trim = require( 'lodash/trim' ),
+	throttle = require( 'lodash/throttle' ),
 	moment = require( 'moment' ),
-	ReduxProvider = require( 'react-redux' ).Provider;
+	ReduxProvider = require( 'react-redux' ).Provider,
+	qs = require( 'qs' );
 
 /**
  * Internal Dependencies
@@ -85,7 +87,7 @@ function userHasHistory( context ) {
 
 function ensureStoreLoading( store, context ) {
 	if ( store.getPage() === 1 ) {
-		if ( context.query.at ) {
+		if ( context && context.query && context.query.at ) {
 			const startDate = moment( context.query.at );
 			if ( startDate.isValid() ) {
 				store.startDate = startDate.format();
@@ -400,8 +402,10 @@ module.exports = {
 			basePath = '/read/search',
 			fullAnalyticsPageTitle = analyticsPageTitle + ' > Search',
 			searchSlug = context.query.q,
-			store = feedStreamFactory( 'search:' + searchSlug ),
+			store = feedStreamFactory( 'search' ),
 			mcKey = 'search';
+
+		store.resetQuery( searchSlug );
 
 		ensureStoreLoading( store, context );
 
@@ -424,7 +428,16 @@ module.exports = {
 					mcKey
 				),
 				onUpdatesShown: trackUpdatesLoaded.bind( null, mcKey ),
-				showBack: userHasHistory( context )
+				showBack: false,
+				onQueryChange: throttle( function( newValue ) {
+					let searchUrl = '/read/search';
+					if ( newValue ) {
+						searchUrl += '?' + qs.stringify( { q: newValue } );
+					}
+					store.resetQuery( newValue );
+					ensureStoreLoading( store, context );
+					page.replace( searchUrl, null, null, false );
+				}, 100, { leading: false, trailing: true } )
 			} ),
 			document.getElementById( 'primary' )
 		);

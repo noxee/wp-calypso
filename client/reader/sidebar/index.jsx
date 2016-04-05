@@ -26,7 +26,6 @@ import discoverHelper from 'reader/discover/helper';
 import ReaderSidebarTags from './reader-sidebar-tags';
 import ReaderSidebarLists from './reader-sidebar-lists';
 import ReaderSidebarTeams from './reader-sidebar-teams';
-import ReaderSidebarSearch from './reader-sidebar-search';
 import ReaderSidebarHelper from './helper';
 import { toggleReaderSidebarLists, toggleReaderSidebarTags } from 'state/ui/reader/sidebar/actions';
 import { getSubscribedLists } from 'state/reader/lists/selectors';
