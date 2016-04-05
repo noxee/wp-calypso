@@ -10,6 +10,7 @@ import ListManagementSites from './sites';
 import Main from 'components/main';
 import Navigation from 'reader/list-management/navigation';
 import { getListByOwnerAndSlug } from 'state/reader/lists/selectors';
+import QueryReaderList from 'components/data/query-reader-list';
 
 const debug = debugModule( 'calypso:reader:list-management' ); //eslint-disable-line no-unused-vars
 
@@ -34,6 +35,7 @@ const ListManagement = React.createClass( {
 	render() {
 		return (
 			<Main className={ 'list-management-' + this.props.tab }>
+				<QueryReaderList owner={ this.props.owner } slug={ this.props.slug } />
 				<Navigation selected={ this.props.tab } list={ this.props.list } />
 				{ this.renderTabContent() }
 			</Main>
