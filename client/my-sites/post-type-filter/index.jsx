@@ -5,6 +5,7 @@ import React, { PropTypes } from 'react';
 import { connect } from 'react-redux';
 import map from 'lodash/map';
 import find from 'lodash/find';
+import includes from 'lodash/includes';
 
 /**
  * Internal dependencies
@@ -38,7 +39,7 @@ const PostTypeFilter = React.createClass( {
 		const { query, siteSlug, counts } = this.props;
 
 		return map( counts, ( count, status ) => {
-			if ( ! count ) {
+			if ( ! count && ! includes( [ 'publish', 'draft' ], status ) ) {
 				return;
 			}
 
@@ -90,7 +91,7 @@ const PostTypeFilter = React.createClass( {
 	},
 
 	render() {
-		const { siteId, query, counts } = this.props;
+		const { siteId, query } = this.props;
 		const navItems = this.getNavItems();
 		const selectedItem = find( navItems, 'selected' ) || {};
 
@@ -104,21 +105,17 @@ const PostTypeFilter = React.createClass( {
 				<SectionNav
 					selectedText={ selectedItem.children }
 					selectedCount={ selectedItem.count }>
-					{ counts && [
-						<NavTabs
-							key="tabs"
-							label={ this.translate( 'Status', { context: 'Filter group label for tabs' } ) }
-							selectedText={ selectedItem.children }
-							selectedCount={ selectedItem.count }>
-							{ map( navItems, ( props ) => <NavItem { ...props } /> ) }
-						</NavTabs>,
-						<Search
-							key="search"
-							pinned={ true }
-							onSearch={ this.doSearch }
-							placeholder={ this.translate( 'Search…' ) }
-							delaySearch={ true } />
-					] }
+					<NavTabs
+						label={ this.translate( 'Status', { context: 'Filter group label for tabs' } ) }
+						selectedText={ selectedItem.children }
+						selectedCount={ selectedItem.count }>
+						{ map( navItems, ( props ) => <NavItem { ...props } /> ) }
+					</NavTabs>
+					<Search
+						pinned={ true }
+						onSearch={ this.doSearch }
+						placeholder={ this.translate( 'Search…' ) }
+						delaySearch={ true } />
 				</SectionNav>
 			</div>
 		);
