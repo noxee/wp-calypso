@@ -64,6 +64,7 @@ module.exports = function() {
 	}
 
 	page( '/read/a8c', updateLastRoute, controller.removePost, controller.sidebar, forceTeamA8C, controller.readA8C );
+	page( '/read/search', updateLastRoute, controller.removePost, controller.sidebar, controller.search );
 
 	page( '/read/list/:user/:list', updateLastRoute, controller.removePost, controller.sidebar, controller.listListing );
 

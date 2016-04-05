@@ -26,6 +26,7 @@ import discoverHelper from 'reader/discover/helper';
 import ReaderSidebarTags from './reader-sidebar-tags';
 import ReaderSidebarLists from './reader-sidebar-lists';
 import ReaderSidebarTeams from './reader-sidebar-teams';
+import ReaderSidebarSearch from './reader-sidebar-search';
 import ReaderSidebarHelper from './helper';
 import { toggleReaderSidebarLists, toggleReaderSidebarTags } from 'state/ui/reader/sidebar/actions';
 import { getSubscribedLists } from 'state/reader/lists/selectors';
@@ -180,6 +181,13 @@ const ReaderSidebar = React.createClass( {
 									</li>
 								) : null
 						}
+
+						<li className={ ReaderSidebarHelper.itemLinkClass( '/read/search', this.props.path, { 'sidebar-streams__search': true } ) }>
+							<a href="/read/search">
+								<Gridicon icon="search" size={ 24 } />
+								<span className="menu-link-text">{ this.translate( 'Search' ) }</span>
+							</a>
+						</li>
 
 						<li className={ ReaderSidebarHelper.itemLinkClassStartsWithOneOf( [ '/recommendations', '/tags' ], this.props.path, { 'sidebar-streams__recommendations': true } ) }>
 							<a href="/recommendations">

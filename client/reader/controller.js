@@ -395,6 +395,41 @@ module.exports = {
 		);
 	},
 
+	search: function( context ) {
+		var SearchStream = require( 'reader/search-stream' ),
+			basePath = '/read/search',
+			fullAnalyticsPageTitle = analyticsPageTitle + ' > Search',
+			searchSlug = context.query.q,
+			store = feedStreamFactory( 'search:' + searchSlug ),
+			mcKey = 'search';
+
+		ensureStoreLoading( store, context );
+
+		trackPageLoad( basePath, fullAnalyticsPageTitle, mcKey );
+		stats.recordTrack( 'calypso_reader_search_loaded', {
+			query: searchSlug
+		} );
+
+		ReactDom.render(
+			React.createElement( SearchStream, {
+				key: 'search',
+				store: store,
+				query: searchSlug,
+				setPageTitle: setPageTitle,
+				trackScrollPage: trackScrollPage.bind(
+					null,
+					basePath,
+					fullAnalyticsPageTitle,
+					analyticsPageTitle,
+					mcKey
+				),
+				onUpdatesShown: trackUpdatesLoaded.bind( null, mcKey ),
+				showBack: userHasHistory( context )
+			} ),
+			document.getElementById( 'primary' )
+		);
+	},
+
 	listListing: function( context ) {
 		var ListStream = require( 'reader/list-stream' ),
 			basePath = '/read/list/:owner/:slug',
