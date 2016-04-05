@@ -134,7 +134,7 @@ module.exports = React.createClass( {
 	},
 
 	addNewWordPressButton: function() {
-		const signupUrl = abtest( 'addNewWordPress' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
+		const signupUrl = abtest( 'guidedTours' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
 		return (
 			<span className="current-site__add-new-site">
 				<Button compact borderless

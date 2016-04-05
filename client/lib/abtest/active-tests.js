@@ -105,11 +105,11 @@ module.exports = {
 		},
 		defaultVariation: 'original'
 	},
-	addNewWordPress: {
+	guidedTours: {
 		datestamp: '20160329',
 		variations: {
-			original: 90,
-			guided: 10,
+			original: 98,
+			guided: 2,
 		},
 		defaultVariation: 'original'
 	},

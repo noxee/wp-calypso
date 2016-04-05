@@ -103,7 +103,7 @@ export default React.createClass( {
 	},
 
 	addNewSite() {
-		const signupUrl = abtest( 'addNewWordPress' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
+		const signupUrl = abtest( 'guidedTours' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
 		return (
 			<span className="site-selector__add-new-site">
 				<Button compact borderless href={ signupUrl + '?ref=calypso-selector' } onClick={ this.recordAddNewSite }>

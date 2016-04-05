@@ -34,6 +34,7 @@ import WpcomLoginForm from './wpcom-login-form';
 import userModule from 'lib/user';
 const user = userModule();
 import analytics from 'analytics';
+import { abtest } from 'lib/abtest';
 import SignupProcessingScreen from 'signup/processing-screen';
 import utils from './utils';
 import * as oauthToken from 'lib/oauth-token';
@@ -147,24 +148,25 @@ const Signup = React.createClass( {
 		analytics.tracks.recordEvent( 'calypso_signup_complete', { flow: this.props.flowName } );
 
 		const userIsLoggedIn = Boolean( user.get() );
+		const finalDestination = abtest( 'guidedTours' ) ? config( 'guides_signup_url' ) : destination;
 
 		if ( userIsLoggedIn ) {
 			// deferred in case the user is logged in and the redirect triggers a dispatch
 			defer( function() {
-				page( destination );
+				page( finalDestination );
 			}.bind( this ) );
 		}
 
 		if ( ! userIsLoggedIn && config.isEnabled( 'oauth' ) ) {
 			oauthToken.setToken( dependencies.bearer_token );
-			window.location.href = destination;
+			window.location.href = finalDestination;
 		}
 
 		if ( ! userIsLoggedIn && ! config.isEnabled( 'oauth' ) ) {
 			this.setState( {
 				bearerToken: dependencies.bearer_token,
 				username: dependencies.username,
-				redirectTo: this.loginRedirectTo( destination )
+				redirectTo: this.loginRedirectTo( finalDestination )
 			} );
 		}
 
