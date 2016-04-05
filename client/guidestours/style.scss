@@ -1,10 +1,14 @@
 @keyframes guidestours__overlay-animation {
-	from {
-		outline-color: transparent;
+	0%, 100% {
+		box-shadow: inset 0 0 0 1px rgba( $gray-light, 0.4 ),
+			0 0 12px 1px rgba( $gray-dark, 0.4 ),
+			0 0 0 9999px rgba( $gray-light, 0.8 );
 	}
 
-	to {
-		outline-color: rgba(255,255,255,0.5);
+	50% {
+		box-shadow: inset 0 0 0 1px rgba( $gray-light, 0.8 ),
+			0 0 12px 1px rgba( $gray-dark, 0.6 ),
+			0 0 0 9999px rgba( $gray-light, 0.85 );
 	}
 }
 
@@ -12,12 +16,14 @@
 .guidestours__overlay:hover,
 .guidestours__overlay:focus,
 .guidestours__overlay:visited,
-.guidestours__overlay:active
-{
-	outline-style: solid !important;
-	outline-width: 9999px !important;
-	outline-color: rgba(255,255,255,0.5) !important;
-	animation: guidestours__overlay-animation 0.3s ease-in-out;
+.guidestours__overlay:active {
+	box-shadow: inset 0 0 0 1px rgba( $gray-light, 0.8 ),
+		0 0 12px 1px rgba( $gray-dark, 0.6 ),
+		0 0 0 9999px rgba( $gray-light, 0.7 ) !important;
+	animation-name: guidestours__overlay-animation;
+	animation-duration: 3s;
+	animation-timing: ease-in-out;
+	animation-iteration-count: infinite;
 	z-index: z-index( 'root', '.web-preview' );
 }
 
