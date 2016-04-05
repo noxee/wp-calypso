@@ -71,6 +71,7 @@ class GuidesStep extends Component {
 		if ( type === 'bullseye' && onNext && target.addEventListener ) {
 			target.addEventListener( 'click', onNext );
 		}
+		target && target.classList.add( 'guidestours__overlay' );
 	}
 
 	removeTargetListener() {
@@ -78,6 +79,7 @@ class GuidesStep extends Component {
 		if ( type === 'bullseye' && onNext && target.removeEventListener ) {
 			target.removeEventListener( 'click', onNext );
 		}
+		target && target.classList.remove( 'guidestours__overlay' );
 	}
 
 	render() {
@@ -176,6 +178,7 @@ export default class GuidesTours extends Component {
 
 	quit() {
 		//TODO: should we dispatch a showGuidesTour action here instead?
+		this.currentTarget && this.currentTarget.classList.remove( 'guidestours__overlay' );
 		this.setState( { currentStep: null } );
 	}
 
