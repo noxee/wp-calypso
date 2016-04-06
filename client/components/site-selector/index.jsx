@@ -9,7 +9,6 @@ import classNames from 'classnames';
 /**
  * Internal dependencies
  */
-import { abtest } from 'lib/abtest';
 import AllSites from 'my-sites/all-sites';
 import analytics from 'analytics';
 import Button from 'components/button';
@@ -103,10 +102,9 @@ export default React.createClass( {
 	},
 
 	addNewSite() {
-		const signupUrl = abtest( 'guidedTours' ) === 'guided' ? config( 'guides_signup_url' ) : config( 'signup_url' );
 		return (
 			<span className="site-selector__add-new-site">
-				<Button compact borderless href={ signupUrl + '?ref=calypso-selector' } onClick={ this.recordAddNewSite }>
+				<Button compact borderless href={ config( 'signup_url' ) + '?ref=calypso-selector' } onClick={ this.recordAddNewSite }>
 					<Gridicon icon="add-outline" /> { this.translate( 'Add New WordPress' ) }
 				</Button>
 			</span>

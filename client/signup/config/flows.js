@@ -269,8 +269,16 @@ function filterFlowName( flowName ) {
 	return flowName;
 }
 
+function filterDestination( destination, dependencies ) {
+	if ( dependenciesContainCartItem( dependencies ) ) {
+		return getCheckoutUrl( dependencies );
+	}
+	return abtest( 'guidedTours' ) ? `/posts/${ dependencies.siteSlug }/?tour=main` : destination;
+}
+
 export default {
-	filterFlowName: filterFlowName,
+	filterFlowName,
+	filterDestination,
 
 	defaultFlowName: 'main',
 

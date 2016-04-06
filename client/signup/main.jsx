@@ -97,12 +97,11 @@ const Signup = React.createClass( {
 
 				if ( timeSinceLoading && timeSinceLoading < MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED ) {
 					return delay(
-						this.handleFlowComplete.bind( this, dependencies, destination ),
+						this.handleFlowComplete.bind( this, dependencies, utils.getDestination( destination, dependencies ) ),
 						MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED - timeSinceLoading
 					);
 				}
-
-				return this.handleFlowComplete( dependencies, destination );
+				return this.handleFlowComplete( dependencies, utils.getDestination( destination, dependencies ) );
 			}.bind( this )
 		} );
 
@@ -148,25 +147,24 @@ const Signup = React.createClass( {
 		analytics.tracks.recordEvent( 'calypso_signup_complete', { flow: this.props.flowName } );
 
 		const userIsLoggedIn = Boolean( user.get() );
-		const finalDestination = abtest( 'guidedTours' ) ? config( 'guides_signup_url' ) : destination;
 
 		if ( userIsLoggedIn ) {
 			// deferred in case the user is logged in and the redirect triggers a dispatch
 			defer( function() {
-				page( finalDestination );
+				page( destination );
 			}.bind( this ) );
 		}
 
 		if ( ! userIsLoggedIn && config.isEnabled( 'oauth' ) ) {
 			oauthToken.setToken( dependencies.bearer_token );
-			window.location.href = finalDestination;
+			window.location.href = destination;
 		}
 
 		if ( ! userIsLoggedIn && ! config.isEnabled( 'oauth' ) ) {
 			this.setState( {
 				bearerToken: dependencies.bearer_token,
 				username: dependencies.username,
-				redirectTo: this.loginRedirectTo( finalDestination )
+				redirectTo: this.loginRedirectTo( destination )
 			} );
 		}
 
