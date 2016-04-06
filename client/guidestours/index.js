@@ -9,9 +9,8 @@ import { connect } from 'react-redux';
  */
 import Card from 'components/card';
 import Button from 'components/button';
-import WebPreview from 'components/web-preview';
-import guideConfig from './config';
-import { getSelectedSite } from 'state/ui/selectors';
+import { getSelectedSite, getGuidesTourState } from 'state/ui/selectors';
+import { nextGuidesTourStep } from 'state/ui/actions';
 
 // Magic numbers make me sad
 const BULLSEYE_RADIUS = 6;
@@ -121,14 +120,12 @@ class GuidesPointer extends Component {
 
 GuidesPointer.propTypes = {
 	style: PropTypes.object.isRequired,
-	onNext: PropTypes.func.isRequired,
 };
 
 export default class GuidesTours extends Component {
 	constructor() {
 		super();
 		this.bind( 'next', 'quit' );
-		this.state = { currentStep: guideConfig.init };
 	}
 
 	bind( ...methods ) {
@@ -136,12 +133,14 @@ export default class GuidesTours extends Component {
 	}
 
 	componentDidMount() {
+		const { stepConfig } = this.props.tourState;
 		this.tipTargets = this.getTipTargets();
-		this.updateTarget( this.state.currentStep );
+		this.updateTarget( stepConfig );
 	}
 
-	componentWillUpdate( nextProps, nextState ) {
-		this.updateTarget( nextState.currentStep );
+	componentWillUpdate( nextProps ) {
+		const { stepConfig } = nextProps.tourState;
+		this.updateTarget( stepConfig );
 	}
 
 	updateTarget( step ) {
@@ -160,7 +159,8 @@ export default class GuidesTours extends Component {
 	getStepPositions() {
 		let coords = { bullseye: {}, dialog: {} };
 
-		const { bullseye = true, placement = 'center' } = this.state.currentStep;
+		const { stepConfig } = this.props.tourState;
+		const { bullseye = true, placement = 'center' } = stepConfig;
 		const rect = this.currentTarget
 			? this.currentTarget.getBoundingClientRect()
 			: global.window.document.body.getBoundingClientRect();
@@ -174,16 +174,18 @@ export default class GuidesTours extends Component {
 	}
 
 	next() {
-		this.setState( { currentStep: guideConfig[ this.state.currentStep.next ] } );
+		const nextStepName = this.props.tourState.stepConfig.next;
+		this.props.nextGuidesTourStep( nextStepName );
 	}
 
 	quit() {
-		//TODO: should we dispatch a showGuidesTour action here instead?
-		this.setState( { currentStep: null } );
+		this.props.nextGuidesTourStep( null );
 	}
 
 	render() {
-		if ( ! this.state.currentStep ) {
+		const { stepConfig } = this.props.tourState;
+
+		if ( ! stepConfig ) {
 			return null;
 		}
 
@@ -194,16 +196,15 @@ export default class GuidesTours extends Component {
 		return (
 			<div className="guidestours">
 				<GuidesStep
-						{ ...this.state.currentStep }
-						key={ this.state.target }
+						{ ...stepConfig }
+						key={ stepConfig.target }
 						target={ this.currentTarget }
 						style={ stepCoords }
 						onNext={ this.next }
 						onQuit={ this.quit } />
-				{ this.state.currentStep.type === 'bullseye' &&
+				{ stepConfig.type === 'bullseye' &&
 					<GuidesPointer style={ pointerCoords } />
 				}
-				<WebPreview showPreview={ this.state.currentStep.showPreview } previewUrl={ this.props.selectedSite ? `${ this.props.selectedSite.URL }/?iframe=true&preview=true` : '' } />
 			</div>
 		);
 	}
@@ -211,4 +212,7 @@ export default class GuidesTours extends Component {
 
 export default connect( ( state ) => ( {
 	selectedSite: getSelectedSite( state ),
-} ) )( GuidesTours );
+	tourState: getGuidesTourState( state ),
+} ), {
+	nextGuidesTourStep,
+} )( GuidesTours );

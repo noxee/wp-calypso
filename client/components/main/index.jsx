@@ -19,8 +19,8 @@ const Main = React.createClass( {
 		 * `Main` now knows what to do w.r.t. `primary` and
 		 * shouldShowGuidesTour. :]
 		 */
-		console.log( 'Rendering main for', this.props.className,
-				'\nshouldShowGuidesTour:', this.props.shouldShowGuidesTour );
+		//console.log( 'Rendering main for', this.props.className,
+		//		'\nshouldShowGuidesTour:', this.props.shouldShowGuidesTour );
 
 		return (
 			<main className={ classnames( this.props.className, 'main' ) } role="main">
@@ -69,4 +69,4 @@ const MainWrapper = React.createClass( {
 	}
 } );
 
-export default MainWrapper;
+export default Main;

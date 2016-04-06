@@ -1,3 +1,5 @@
+/** @ssr-ready **/
+
 const config = {
 	init: {
 		text: 'Welcome to WordPress.com!',

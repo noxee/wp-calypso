@@ -59,18 +59,29 @@ $zoom-scale: 5; // the multiplier determining the size of the animated rings
 	animation-delay: #{ $animation-speed / 4 };
 }
 
-.guidestours .web-preview__backdrop {
-  display: none;
+.is-guidestour-preview-active .wp-section {
+	visibility: hidden;
 }
 
-.guidestours .web-preview__toolbar {
-  display: none;
+.guidestour-preview .web-preview__backdrop {
+	display: none;
 }
 
-.guidestours .web-preview__placeholder {
-  top: 0px;
+.guidestour-preview .web-preview__toolbar {
+	display: none;
 }
 
-.guidestours .web-preview {
-  left: 273px;
+/*
+ * We don't want the preview container to get in the way of the masterbar, so
+ * we take the 47px `top` bump from `.web-preview__content` to `.web-preview`.
+ */
+
+.guidestour-preview .web-preview__content,
+.guidestour-preview .web-preview__placeholder {
+	top: 0px;
+}
+
+.guidestour-preview.web-preview {
+	top: 47px;
+	left: 273px;
 }
