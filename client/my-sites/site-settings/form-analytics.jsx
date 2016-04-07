@@ -18,7 +18,6 @@ import SectionHeader from 'components/section-header';
 import ExternalLink from 'components/external-link';
 import EmptyContent from 'components/empty-content';
 import { abtest } from 'lib/abtest';
-import config from 'config';
 import analytics from 'analytics';
 
 const debug = debugFactory( 'calypso:my-sites:site-settings' );
@@ -99,6 +98,27 @@ export default React.createClass( {
 		this.recordEventOnce( 'typedAnalyticsKey', 'Typed In Analytics Key Field' );
 	},
 
+	getUpgradeLink() {
+		if ( ! this.props.site || ! this.props.site.domain ) {
+			return '/plans';
+		}
+		const plansVariant = abtest( 'contextualGoogleAnalyticsNudge' );
+		let upgradeLink;
+		switch ( plansVariant ) {
+			case 'settingsDisabledFeature':
+				upgradeLink = `/plans/features/google-analytics/${ this.props.site.domain }`;
+				break;
+			case 'settingsDisabledPlansCompare':
+				upgradeLink = `/plans/compare/google-analytics/${ this.props.site.domain }`;
+				break;
+			case 'settingsDisabledPlans':
+			case 'drake':
+			default:
+				upgradeLink = `/plans/${ this.props.site.domain }`;
+		}
+		return upgradeLink;
+	},
+
 	form() {
 		var placeholderText = '';
 
@@ -107,18 +127,13 @@ export default React.createClass( {
 		}
 
 		if ( abtest( 'contextualGoogleAnalyticsNudge' ) === 'drake' ) {
-			let plansLink = '/plans/';
-			if ( config.isEnabled( 'manage/plans' ) ) {
-				plansLink += this.props.site.domain;
-			} else {
-				plansLink += this.props.site.ID;
-			}
+			const upgradeLink = this.getUpgradeLink();
 			return <EmptyContent
 				illustration="/calypso/images/drake/drake-whoops.svg"
 				title={ this.translate( 'Want to use Google Analytics on your site?', { context: 'site setting upgrade' } ) }
 				line={ this.translate( 'Support for Google Analytics is now available with WordPress.com Business.', { context: 'site setting upgrade' } ) }
 				action={ this.translate( 'Upgrade Now', { context: 'site setting upgrade' } ) }
-				actionURL={ plansLink }
+				actionURL={ upgradeLink }
 				isCompact={ true }
 				actionCallback={ this.trackUpgradeClick } />;
 		}
@@ -195,8 +210,9 @@ export default React.createClass( {
 		if ( this.isEnabled() ) {
 			return;
 		}
-
-		const eventName = 'google_analytics_' + abtest( 'contextualGoogleAnalyticsNudge' ) || 'google_analytics_notice';
+		const abtestVariant = abtest( 'contextualGoogleAnalyticsNudge' );
+		const eventName = `google_analytics_${ abtestVariant }`;
+		const upgradeLink = this.getUpgradeLink();
 
 		debug( 'Google analitics is not enabled. adding nudge ...' );
 
@@ -206,6 +222,7 @@ export default React.createClass( {
 				message={ this.translate( 'Upgrade to the business plan and include your own analytics tracking ID.' ) }
 				feature="google-analytics"
 				event={ eventName }
+				href={ upgradeLink }
 				icon="stats-alt"
 			/>
 		);
