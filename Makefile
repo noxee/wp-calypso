@@ -93,12 +93,10 @@ node_modules: package.json | node-version
 	@$(NPM) install
 	@touch node_modules
 
-# run `make test` in all discovered Makefiles
 test: build
 	@npm run test-client
 	@npm run test-server
 	@npm run test-tests
-	@$(BIN)/run-all-tests
 
 lint: node_modules/eslint node_modules/eslint-plugin-react node_modules/babel-eslint mixedindentlint
 	@$(NPM) run lint
