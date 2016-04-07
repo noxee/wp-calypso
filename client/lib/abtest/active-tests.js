@@ -62,4 +62,12 @@ module.exports = {
 		},
 		defaultVariation: 'original'
 	},
+	domainSuggestionVendor: {
+		datestamp: '20000324',
+		variations: {
+			namegen: 50,
+			domainsbot: 50,
+		},
+		defaultVariation: 'namegen'
+	},
 };
