@@ -16,6 +16,10 @@ import Button from 'components/button';
 import UpgradeNudge from 'my-sites/upgrade-nudge';
 import SectionHeader from 'components/section-header';
 import ExternalLink from 'components/external-link';
+import EmptyContent from 'components/empty-content';
+import { abtest } from 'lib/abtest';
+import config from 'config';
+import analytics from 'analytics';
 
 const debug = debugFactory( 'calypso:my-sites:site-settings' );
 
@@ -102,6 +106,23 @@ export default React.createClass( {
 			placeholderText = this.translate( 'Loading' );
 		}
 
+		if ( abtest( 'contextualGoogleAnalyticsNudge' ) === 'drake' ) {
+			let plansLink = '/plans/';
+			if ( config.isEnabled( 'manage/plans' ) ) {
+				plansLink += this.props.site.domain;
+			} else {
+				plansLink += this.props.site.ID;
+			}
+			return <EmptyContent
+				illustration="/calypso/images/drake/drake-whoops.svg"
+				title={ this.translate( 'Want to use Google Analytics on your site?', { context: 'site setting upgrade' } ) }
+				line={ this.translate( 'Support for Google Analytics is now available with WordPress.com Business.', { context: 'site setting upgrade' } ) }
+				action={ this.translate( 'Upgrade Now', { context: 'site setting upgrade' } ) }
+				actionURL={ plansLink }
+				isCompact={ true }
+				actionCallback={ this.trackUpgradeClick } />;
+		}
+
 		return (
 			<form id="site-settings" onSubmit={ this.submitForm } onChange={ this.markChanged }>
 				<SectionHeader label={ this.translate( 'Analytics Settings' ) }>
@@ -175,6 +196,8 @@ export default React.createClass( {
 			return;
 		}
 
+		const eventName = 'google_analytics_' + abtest( 'contextualGoogleAnalyticsNudge' ) || 'google_analytics_notice';
+
 		debug( 'Google analitics is not enabled. adding nudge ...' );
 
 		return (
@@ -182,10 +205,14 @@ export default React.createClass( {
 				title={ this.translate( 'Add Google Analytics' ) }
 				message={ this.translate( 'Upgrade to the business plan and include your own analytics tracking ID.' ) }
 				feature="google-analytics"
-				event="google_analytics_notice"
+				event={ eventName }
 				icon="stats-alt"
 			/>
 		);
+	},
+
+	trackUpgradeClick: function() {
+		analytics.tracks.recordEvent( 'calypso_upgrade_nudge_cta_click', { cta_name: 'google_analytics' } );
 	},
 
 	render() {

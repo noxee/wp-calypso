@@ -62,4 +62,15 @@ module.exports = {
 		},
 		defaultVariation: 'original'
 	},
+	contextualGoogleAnalyticsNudge: {
+		datestamp: '20160407',
+		variations: {
+			drake: 25,
+			settingsDisabledPlans: 25,
+			settingsDisabledPlansCompare: 25,
+			settingsDisabledFeature: 25,
+		},
+		defaultVariation: 'drake',
+		allowExistingUsers: true,
+	},
 };
