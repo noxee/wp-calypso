@@ -19,13 +19,15 @@ export default function( context ) {
 	renderWithReduxStore(
 		<Main>
 			<HeaderCake>Google Analytics</HeaderCake>
-			<Card>
+			<Card compact>
 				<div className="feature-analytics__logo" dangerouslySetInnerHTML={{ __html: svgLogo }} />
 				<h1 className="feature-analytics__title">Use Google Analytics with Business</h1>
 				<span className="feature-analytics__description">
 					Upgrade to Business to use your own Google Analytics, get a custom domain, and much more.
 				</span>
 				<div className="feature-analytics__ilustration" dangerouslySetInnerHTML={{ __html: svgIllustration }} />
+			</Card>
+			<Card compact>
 			</Card>
 		</Main>,
 		document.getElementById( 'primary' ),
