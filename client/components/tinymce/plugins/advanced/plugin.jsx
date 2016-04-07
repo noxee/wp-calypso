@@ -1,15 +1,18 @@
 /**
  * External dependencies
  */
-var tinymce = require( 'tinymce/tinymce' ),
-	throttle = require( 'lodash/throttle' );
+import React from 'react';
+import ReactDomServer from 'react-dom/server';
+import tinymce from 'tinymce/tinymce';
+import throttle from 'lodash/throttle';
 
 /**
  * Internal dependencies
  */
-var PreferencesStore = require( 'lib/preferences/store' ),
-	PreferencesActions = require( 'lib/preferences/actions' ),
-	isWithinBreakpoint = require( 'lib/viewport' ).isWithinBreakpoint;
+import PreferencesStore from 'lib/preferences/store';
+import PreferencesActions from 'lib/preferences/actions';
+import { isWithinBreakpoint } from 'lib/viewport';
+import Gridicon from 'components/gridicon';
 
 function advanced( editor ) {
 	var button, updateVisibleState;
@@ -53,10 +56,16 @@ function advanced( editor ) {
 	editor.addButton( 'wpcom_advanced', {
 		text: 'Toggle Advanced',
 		tooltip: 'Toggle Advanced',
-		classes: 'btn advanced',
+		classes: 'btn wpcom-icon-button advanced',
 		cmd: 'WPCOM_ToggleAdvancedVisible',
 		onPostRender: function() {
 			button = this;
+
+			this.innerHtml( ReactDomServer.renderToStaticMarkup(
+				<button type="button" role="presentation" tabIndex="-1">
+					<Gridicon icon="ellipsis" size={ 28 } nonStandardSize />
+				</button>
+			) );
 		}
 	} );
 
