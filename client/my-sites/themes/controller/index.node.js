@@ -27,18 +27,19 @@ let themeDetailsCache = new Map();
 
 // This is generic -- nothing themes-specific in here!
 export function makeElement( Component, getProps, Head, sideEffects = function() {} ) {
-	return ( context, next ) => {
+	return ( context ) => {
 		const boundSideEffects = sideEffects.bind( null, context );
 
-		context.primary = <ReduxProvider store={ context.store }>
-			<Head context={ context }>
-				<Component { ...getProps( context ) } />
-				<ClientSideEffects>
-					{ boundSideEffects }
-				</ClientSideEffects>
-			</Head>
-		</ReduxProvider>;
-		next();
+		return (
+			<ReduxProvider store={ context.store }>
+				<Head context={ context }>
+					<Component { ...getProps( context ) } />
+					<ClientSideEffects>
+						{ boundSideEffects }
+					</ClientSideEffects>
+				</Head>
+			</ReduxProvider>
+		);
 	}
 };
 
