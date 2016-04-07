@@ -123,7 +123,7 @@
     "npm": "2.14.12"
   },
   "scripts": {
-    "test": "make test",
+    "test": "npm run test-client && npm run test-server && npm run test-tests",
     "test-client": "NODE_ENV=test NODE_PATH=test:client test/runner.js",
     "test-server": "NODE_ENV=test NODE_PATH=test:server:client test/runner.js",
     "test-tests": "NODE_ENV=test NODE_PATH=test:test/test:client test/runner.js",
