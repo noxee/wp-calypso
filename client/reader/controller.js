@@ -6,7 +6,6 @@ const ReactDom = require( 'react-dom' ),
 	page = require( 'page' ),
 	debug = require( 'debug' )( 'calypso:reader:controller' ),
 	trim = require( 'lodash/trim' ),
-	throttle = require( 'lodash/throttle' ),
 	moment = require( 'moment' ),
 	ReduxProvider = require( 'react-redux' ).Provider,
 	qs = require( 'qs' );
@@ -429,15 +428,13 @@ module.exports = {
 				),
 				onUpdatesShown: trackUpdatesLoaded.bind( null, mcKey ),
 				showBack: false,
-				onQueryChange: throttle( function( newValue ) {
+				onQueryChange: function( newValue ) {
 					let searchUrl = '/read/search';
 					if ( newValue ) {
 						searchUrl += '?' + qs.stringify( { q: newValue } );
 					}
-					store.resetQuery( newValue );
-					ensureStoreLoading( store, context );
-					page.replace( searchUrl, null, null, false );
-				}, 100, { leading: false, trailing: true } )
+					page.replace( searchUrl );
+				}
 			} ),
 			document.getElementById( 'primary' )
 		);

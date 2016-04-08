@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import ReactDom from 'react-dom';
+import debounce from 'lodash/debounce';
 
 /**
  * Internal Dependencies
@@ -29,26 +30,34 @@ const FeedStream = React.createClass( {
 		};
 	},
 
+	componentWillMount() {
+		this.debouncedUpdate = debounce( this.updateQuery, 300 );
+	},
+
 	componentWillReceiveProps( nextProps ) {
 		if ( nextProps.query !== this.props.query ) {
-			this.updateState();
+			this.updateState( nextProps );
 		}
 	},
 
-	updateState() {
+	updateState( props = this.props ) {
 		var newState = {
-			title: this.getTitle()
+			title: this.getTitle( props )
 		};
 		if ( newState.title !== this.state.title ) {
 			this.setState( newState );
 		}
 	},
 
-	getTitle() {
-		return this.props.query;
+	getTitle( props = this.props ) {
+		return props.query;
 	},
 
 	updateQuery() {
+		console.log( 'checking at ', Date.now() );
+		if ( ! this.isMounted() ) {
+			return;
+		}
 		const newValue = ReactDom.findDOMNode( this.refs.searchInput ).value;
 		console.log( 'new value', newValue );
 		this.props.onQueryChange( newValue );
@@ -69,7 +78,7 @@ const FeedStream = React.createClass( {
 				{ this.props.showBack && <HeaderBack /> }
 				<h2>{ this.translate( 'Search' ) }</h2>
 				<p>
-					<FormTextInput type="text" value={ this.props.query } ref="searchInput" onChange={ this.updateQuery } placeholder={ this.translate( 'Enter a search term' ) } />
+					<FormTextInput type="text" value={ undefined } defaultValue={ this.props.query } ref="searchInput" onChange={ this.debouncedUpdate } placeholder={ this.translate( 'Enter a search term' ) } />
 				</p>
 				{ this.props.query && <StreamHeader
 					isPlaceholder={ false }
