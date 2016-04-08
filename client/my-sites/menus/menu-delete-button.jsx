@@ -12,6 +12,12 @@ var siteMenus = require( 'lib/menu-data' ),
 	notices = require( 'notices' );
 
 var MenuDeleteButton = React.createClass( {
+	getInitialState: function() {
+		return {
+			undoNotice: undefined
+		};
+	},
+
 	delete: function() {
 		analytics.ga.recordEvent( 'Menus', 'Trashed Menu' );
 
@@ -27,10 +33,13 @@ var MenuDeleteButton = React.createClass( {
 		}
 	},
 
-	undo: function( event, close ) {
+	undo: function( event ) {
 		// User might have modified something in the meantime
 		siteMenus.ensureContentsSaved( this.props.confirmDiscard, function() {
-			close();
+			if ( this.state.undoNotice ) {
+				notices.removeNotice( this.state.undoNotice );
+				this.state.undoNotice = undefined;
+			}
 			this.setBusyState();
 			siteMenus.restoreMenu( this.props.selectedLocation, this.clearBusyState );
 		}.bind( this ) );
@@ -47,7 +56,7 @@ var MenuDeleteButton = React.createClass( {
 	},
 
 	showUndoNotice: function() {
-		notices.info( this.getUndoNoticeText(), {
+		this.state.undoNotice = notices.info( this.getUndoNoticeText(), {
 			button: this.getUndoButtonLabel(),
 			onClick: this.undo
 		} );
