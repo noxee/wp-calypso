@@ -7,19 +7,18 @@ import uniqueId from 'lodash/uniqueId';
  * Internal dependencies
  */
 import {
-	NEW_NOTICE,
-	REMOVE_NOTICE,
-	SET_ROUTE
+	NOTICE_CREATE,
+	NOTICE_REMOVE
 } from 'state/action-types';
 
 export function removeNotice( noticeId ) {
 	return {
 		noticeId: noticeId,
-		type: REMOVE_NOTICE
+		type: NOTICE_REMOVE
 	};
 }
 
-function createNotice( status, text, options = {} ) {
+export function createNotice( status, text, options = {} ) {
 	const notice = {
 		noticeId: options.id || uniqueId(),
 		duration: options.duration,
@@ -31,15 +30,8 @@ function createNotice( status, text, options = {} ) {
 	};
 
 	return {
-		type: NEW_NOTICE,
+		type: NOTICE_CREATE,
 		notice: notice
-	};
-}
-
-export function setRoute( path ) {
-	return {
-		type: SET_ROUTE,
-		path: path
 	};
 }
 

@@ -2,6 +2,12 @@
 * External dependencies
 */
 import React from 'react';
+import { invoke } from 'lodash';
+
+/**
+* Internal dependencies
+*/
+import config from 'config';
 
 const Hider = React.createClass( {
 	displayName: 'Hider',
@@ -16,7 +22,10 @@ const Hider = React.createClass( {
 
 	render() {
 		return (
-			<div style={ this.props.hide ? { display: 'none' } : {} }>
+			<div
+				className={ config.isEnabled( 'devdocs/usage-counts' ) ? 'design-assets__group' : null }
+				style={ this.props.hide ? { display: 'none' } : {} }
+			>
 				{ this.props.children }
 			</div>
 		);
@@ -53,7 +62,10 @@ export default React.createClass( {
 		searchString = example.type.displayName;
 
 		if ( this.props.component ) {
-			return example.type.displayName.toLowerCase() !== this.props.component.replace( /-([a-z])/g, '$1' );
+			const exampleName = invoke( example, 'type.displayName.toLowerCase' );
+			const componentName = invoke( this, 'props.component.replace', /-([a-z])/g, '$1' );
+
+			return exampleName !== componentName;
 		}
 
 		if ( example.props.searchKeywords ) {

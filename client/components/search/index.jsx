@@ -4,10 +4,11 @@
  * External dependencies
  */
 import ReactDom from 'react-dom';
-import React from 'react';
+import React, { PropTypes } from 'react';
 import classNames from 'classnames';
 import debounce from 'lodash/debounce';
 import noop from 'lodash/noop';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
@@ -16,12 +17,20 @@ import analytics from 'lib/analytics';
 import Spinner from 'components/spinner';
 import Gridicon from 'components/gridicon';
 import { isMobile } from 'lib/viewport';
-import i18n from 'lib/mixins/i18n';
 
 /**
  * Internal variables
  */
-var SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 300;
+
+function keyListener( methodToCall, event ) {
+	switch ( event.key ) {
+		case ' ':
+		case 'Enter':
+			this[ methodToCall ]( event );
+			break;
+	}
+}
 
 const Search = React.createClass( {
 
@@ -32,23 +41,25 @@ const Search = React.createClass( {
 	},
 
 	propTypes: {
-		additionalClasses: React.PropTypes.string,
-		initialValue: React.PropTypes.string,
-		placeholder: React.PropTypes.string,
-		pinned: React.PropTypes.bool,
-		delaySearch: React.PropTypes.bool,
-		delayTimeout: React.PropTypes.number,
-		onSearch: React.PropTypes.func.isRequired,
-		onSearchChange: React.PropTypes.func,
-		onSearchClose: React.PropTypes.func,
-		analyticsGroup: React.PropTypes.string,
-		autoFocus: React.PropTypes.bool,
-		disabled: React.PropTypes.bool,
-		onKeyDown: React.PropTypes.func,
-		disableAutocorrect: React.PropTypes.bool,
-		onBlur: React.PropTypes.func,
-		searching: React.PropTypes.bool,
-		isOpen: React.PropTypes.bool
+		additionalClasses: PropTypes.string,
+		initialValue: PropTypes.string,
+		placeholder: PropTypes.string,
+		pinned: PropTypes.bool,
+		delaySearch: PropTypes.bool,
+		delayTimeout: PropTypes.number,
+		onSearch: PropTypes.func.isRequired,
+		onSearchChange: PropTypes.func,
+		onSearchClose: PropTypes.func,
+		analyticsGroup: PropTypes.string,
+		autoFocus: PropTypes.bool,
+		disabled: PropTypes.bool,
+		onKeyDown: PropTypes.func,
+		disableAutocorrect: PropTypes.bool,
+		onBlur: PropTypes.func,
+		searching: PropTypes.bool,
+		isOpen: PropTypes.bool,
+		dir: PropTypes.string,
+		fitsContainer: PropTypes.bool
 	},
 
 	getInitialState: function() {
@@ -70,7 +81,9 @@ const Search = React.createClass( {
 			onKeyDown: noop,
 			disableAutocorrect: false,
 			searching: false,
-			isOpen: false
+			isOpen: false,
+			dir: undefined,
+			fitsContainer: false
 		};
 	},
 
@@ -78,6 +91,9 @@ const Search = React.createClass( {
 		this.setState( {
 			instanceId: ++Search.instances
 		} );
+
+		this.closeListener = keyListener.bind( this, 'closeSearch' );
+		this.openListener = keyListener.bind( this, 'openSearch' );
 	},
 
 	componentWillReceiveProps: function( nextProps ) {
@@ -92,6 +108,11 @@ const Search = React.createClass( {
 
 		if ( nextProps.isOpen ) {
 			this.setState( { isOpen: nextProps.isOpen } );
+		}
+
+		if ( nextProps.initialValue !== this.props.initialValue &&
+				( this.state.keyword === this.props.initialValue || this.state.keyword === '' ) ) {
+			this.setState( { keyword: nextProps.initialValue || '' } );
 		}
 	},
 
@@ -173,15 +194,13 @@ const Search = React.createClass( {
 	},
 
 	closeSearch: function( event ) {
-		var input;
-
 		event.preventDefault();
 
 		if ( this.props.disabled ) {
 			return;
 		}
 
-		input = ReactDom.findDOMNode( this.refs.searchInput );
+		const input = ReactDom.findDOMNode( this.refs.searchInput );
 
 		this.setState( {
 			keyword: '',
@@ -195,13 +214,13 @@ const Search = React.createClass( {
 			ReactDom.findDOMNode( this.refs.openIcon ).focus();
 		}
 
-		this.props.onSearchClose();
+		this.props.onSearchClose( event );
 
 		analytics.ga.recordEvent( this.props.analyticsGroup, 'Clicked Close Search' );
 	},
 
 	keyUp: function( event ) {
-		if ( event.which === 13 && isMobile() ) {
+		if ( event.key === 'Enter' && isMobile() ) {
 			//dismiss soft keyboards
 			this.blur();
 		}
@@ -216,13 +235,16 @@ const Search = React.createClass( {
 	},
 
 	keyDown: function( event ) {
+		if ( event.key === 'Escape' && event.target.value === '' ) {
+			this.closeSearch( event );
+		}
 		this.props.onKeyDown( event );
 	},
 
 	// Puts the cursor at end of the text when starting
 	// with `initialValue` set.
 	onFocus: function() {
-		var input = ReactDom.findDOMNode( this.refs.searchInput ),
+		const input = ReactDom.findDOMNode( this.refs.searchInput ),
 			setValue = input.value;
 
 		if ( setValue ) {
@@ -233,13 +255,13 @@ const Search = React.createClass( {
 	},
 
 	render: function() {
-		var searchClass,
+		let searchClass,
 			searchValue = this.state.keyword,
 			placeholder = this.props.placeholder ||
-				i18n.translate( 'Search…', { textOnly: true } ),
+				i18n.translate( 'Search…', { textOnly: true } );
 
-			enableOpenIcon = this.props.pinned && ! this.state.isOpen,
-			isOpenUnpinnedOrQueried = this.state.isOpen ||
+		const enableOpenIcon = this.props.pinned && ! this.state.isOpen;
+		const isOpenUnpinnedOrQueried = this.state.isOpen ||
 				! this.props.pinned ||
 				this.props.initialValue;
 
@@ -250,9 +272,11 @@ const Search = React.createClass( {
 		};
 
 		searchClass = classNames( this.props.additionalClasses, {
-			'is-pinned': this.props.pinned,
+			'is-expanded-to-container': this.props.fitsContainer,
 			'is-open': isOpenUnpinnedOrQueried,
 			'is-searching': this.props.searching,
+			rtl: this.props.dir === 'rtl',
+			ltr: this.props.dir === 'ltr',
 			search: true
 		} );
 
@@ -264,17 +288,17 @@ const Search = React.createClass( {
 					onTouchTap={ enableOpenIcon ? this.openSearch : this.focus }
 					tabIndex={ enableOpenIcon ? '0' : null }
 					onKeyDown={ enableOpenIcon
-						? this._keyListener.bind( this, 'openSearch' )
+						? this.openListener
 						: null
 					}
 					aria-controls={ 'search-component-' + this.state.instanceId }
 					aria-label={ i18n.translate( 'Open Search', { context: 'button label' } ) }>
-				<Gridicon icon="search" className="search-open__icon"/>
+				<Gridicon icon="search" className={ 'search-open__icon' + ( this.props.dir ? ' ' + this.props.dir : '' ) }/>
 				</div>
 				<input
 					type="search"
 					id={ 'search-component-' + this.state.instanceId }
-					className="search__input"
+					className={ 'search__input' + ( this.props.dir ? ' ' + this.props.dir : '' ) }
 					placeholder={ placeholder }
 					role="search"
 					value={ searchValue }
@@ -287,7 +311,8 @@ const Search = React.createClass( {
 					disabled={ this.props.disabled }
 					aria-hidden={ ! isOpenUnpinnedOrQueried }
 					autoCapitalize="none"
-					{...autocorrect } />
+					dir={ this.props.dir }
+					{ ...autocorrect } />
 				{ ( searchValue || this.state.isOpen ) ? this.closeButton() : null }
 			</div>
 		);
@@ -298,21 +323,12 @@ const Search = React.createClass( {
 			<span
 				onTouchTap={ this.closeSearch }
 				tabIndex="0"
-				onKeyDown={ this._keyListener.bind( this, 'closeSearch' ) }
+				onKeyDown={ this.closeListener }
 				aria-controls={ 'search-component-' + this.state.instanceId }
 				aria-label={ i18n.translate( 'Close Search', { context: 'button label' } ) }>
-			<Gridicon icon="cross" className="search-close__icon"/>
+			<Gridicon icon="cross" className={ 'search-close__icon' + ( this.props.dir ? ' ' + this.props.dir : '' ) } />
 			</span>
 		);
-	},
-
-	_keyListener: function( methodToCall, event ) {
-		switch ( event.key ) {
-			case ' ':
-			case 'Enter':
-				this[ methodToCall ]( event );
-				break;
-		}
 	}
 } );
 

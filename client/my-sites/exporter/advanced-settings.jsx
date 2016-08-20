@@ -7,10 +7,10 @@ import { connect } from 'react-redux';
 /**
  * Internal dependencies
  */
-import OptionFieldset from 'my-sites/exporter/option-fieldset';
+import PostTypeOptions from './post-type-options';
 import SpinnerButton from './spinner-button';
-
-import { advancedSettings } from 'state/site-settings/exporter/selectors';
+import { isDateRangeValid as isExportDateRangeValid } from 'state/site-settings/exporter/selectors';
+import { getSelectedSiteId } from 'state/ui/selectors';
 
 /**
  * Displays additional options for customising an export
@@ -32,43 +32,12 @@ const AdvancedSettings = React.createClass( {
 	},
 
 	render() {
-		const legends = {
-			posts: this.translate( 'Posts' ),
-			pages: this.translate( 'Pages' ),
-			feedback: this.translate( 'Feedback' )
-		};
-
-		const menus = {
-			posts: [
-				{ value: 0, options: [ this.translate( 'All Authors' ) ] },
-				{ value: 0, options: [ this.translate( 'All Statuses' ) ] },
-				{ value: 0, options: [ this.translate( 'Starting Date…' ) ] },
-				{ value: 0, options: [ this.translate( 'Ending Date…' ) ] },
-				{ value: 0, options: [ this.translate( 'All Categories' ) ] }
-			],
-			pages: [
-				{ value: 0, options: [ this.translate( 'All Authors' ) ] },
-				{ value: 0, options: [ this.translate( 'All Statuses' ) ] },
-				{ value: 0, options: [ this.translate( 'Starting Date…' ) ] },
-				{ value: 0, options: [ this.translate( 'Ending Date…' ) ] }
-			],
-			feedback: []
-		};
-
-		const buildOptionProps = key => ( {
-			legend: legends[ key ],
-			isEnabled: this.props.postType === key,
-			menus: menus[ key ],
-			onSelect: () => this.props.onSelectPostType( key ),
-			shouldShowPlaceholders: this.props.shouldShowPlaceholders
-		} );
-
 		return (
 			<div className="exporter__advanced-settings">
 				<h1 className="exporter__advanced-settings-title">
 					{ this.translate( 'Select specific content to export' ) }
 				</h1>
-				<p>
+				<p className="exporter__advanced-settings-description">
 					{ this.translate(
 						'Use the options below to select a specific content ' +
 						'type to download. You can select Posts, Pages, ' +
@@ -77,15 +46,16 @@ const AdvancedSettings = React.createClass( {
 						'content in an .xml file.' ) }
 				</p>
 				<div className="exporter__advanced-settings-row">
-					<OptionFieldset { ...buildOptionProps( 'posts' ) } />
-					<OptionFieldset { ...buildOptionProps( 'pages' ) } />
-					<OptionFieldset { ...buildOptionProps( 'feedback' ) }
+					<PostTypeOptions postType="post" legend={ this.translate( 'Posts' ) } />
+					<PostTypeOptions postType="page" legend={ this.translate( 'Pages' ) } />
+					<PostTypeOptions postType="feedback"
+						legend={ this.translate( 'Feedback' ) }
 						description={ this.translate( 'Survey results etc.' ) }
 					/>
 				</div>
 				<SpinnerButton
 					className="exporter__export-button"
-					disabled={ ! this.props.postType }
+					disabled={ ! this.props.isValid }
 					loading={ this.props.shouldShowProgress }
 					isPrimary={ true }
 					onClick={ this.props.onClickExport }
@@ -96,11 +66,13 @@ const AdvancedSettings = React.createClass( {
 	}
 } );
 
-const mapStateToProps = ( state ) => {
-	const siteId = state.ui.selectedSiteId;
+const mapStateToProps = ( state, ownProps ) => {
+	const siteId = getSelectedSiteId( state );
+	const postType = ownProps.postType;
+	const isDateValid = isExportDateRangeValid( state, siteId, postType );
 	return {
-		siteId: siteId,
-		shouldShowPlaceholders: ! advancedSettings( state, siteId )
+		siteId,
+		isValid: postType && isDateValid,
 	};
 };
 

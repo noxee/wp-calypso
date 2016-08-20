@@ -7,7 +7,7 @@ import page from 'page';
 import url from 'url';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
-import startsWith from 'lodash/startsWith';
+import { defer, startsWith } from 'lodash';
 
 /**
  * Internal Dependencies
@@ -22,8 +22,9 @@ import SidebarActions from 'lib/reader-sidebar/actions';
 import SidebarFooter from 'layout/sidebar/footer';
 import SidebarHeading from 'layout/sidebar/heading';
 import SidebarMenu from 'layout/sidebar/menu';
+import SidebarRegion from 'layout/sidebar/region';
 import Gridicon from 'components/gridicon';
-import discoverHelper from 'reader/discover/helper';
+import { isDiscoverEnabled } from 'reader/discover/helper';
 import ReaderSidebarTags from './reader-sidebar-tags';
 import ReaderSidebarLists from './reader-sidebar-lists';
 import ReaderSidebarTeams from './reader-sidebar-teams';
@@ -86,7 +87,7 @@ const ReaderSidebar = React.createClass( {
 	},
 
 	handleClick( event ) {
-		if ( ! event.isDefaultPrevented() && ! closest( event.target, 'input,textarea', true ) ) {
+		if ( ! event.isDefaultPrevented() && closest( event.target, 'a,span', true ) ) {
 			layoutFocus.setNext( 'content' );
 			window.scrollTo( 0, 0 );
 		}
@@ -98,7 +99,7 @@ const ReaderSidebar = React.createClass( {
 	},
 
 	highlightNewTag( tag ) {
-		process.nextTick( function() {
+		defer( function() {
 			page( '/tag/' + tag.slug );
 			window.scrollTo( 0, 0 );
 		} );
@@ -108,7 +109,7 @@ const ReaderSidebar = React.createClass( {
 		const pathParts = this.props.path.split( '/' );
 
 		if ( startsWith( this.props.path, '/tag/' ) ) {
-			const tagSlug = pathParts[2];
+			const tagSlug = pathParts[ 2 ];
 			if ( tagSlug ) {
 				// Open the sidebar
 				if ( ! this.props.isTagsOpen ) {
@@ -119,8 +120,8 @@ const ReaderSidebar = React.createClass( {
 		}
 
 		if ( startsWith( this.props.path, '/read/list/' ) ) {
-			const listOwner = pathParts[3];
-			const listSlug = pathParts[4];
+			const listOwner = pathParts[ 3 ];
+			const listSlug = pathParts[ 4 ];
 			if ( listOwner && listSlug ) {
 				// Open the sidebar
 				if ( ! this.props.isListsOpen ) {
@@ -135,7 +136,7 @@ const ReaderSidebar = React.createClass( {
 		// if promo not configured return
 		if ( ! config.isEnabled( 'desktop-promo' ) ) {
 			return;
-		};
+		}
 
 		// if user settings not loaded, return so we dont show
 		// before we can check if user is already a desktop user
@@ -157,6 +158,7 @@ const ReaderSidebar = React.createClass( {
 	render() {
 		return (
 			<Sidebar onClick={ this.handleClick }>
+				<SidebarRegion>
 				<SidebarMenu>
 					<SidebarHeading>{ this.translate( 'Streams' ) }</SidebarHeading>
 					<ul>
@@ -165,13 +167,39 @@ const ReaderSidebar = React.createClass( {
 								<Gridicon icon="checkmark-circle" size={ 24 } />
 								<span className="menu-link-text">{ this.translate( 'Followed Sites' ) }</span>
 							</a>
-							<a href="/following/edit" className="add-new">{ this.translate( 'Manage' ) }</a>
+							<a href="/following/edit" className="sidebar__button">{ this.translate( 'Manage' ) }</a>
 						</li>
 
 						<ReaderSidebarTeams teams={ this.state.teams } path={ this.props.path } />
 
 						{
-							discoverHelper.isEnabled()
+							// Post Recommendations - Used by the Data team to test recommendation algorithms
+							config.isEnabled( 'reader/recommendations/posts' ) &&
+							(
+								<li className={ ReaderSidebarHelper.itemLinkClass( '/recommendations/posts', this.props.path, { 'sidebar-streams__post-recommendations': true } ) }>
+									<a href="/recommendations/posts">
+										<Gridicon icon="star" size={ 24 } />
+										<span className="menu-link-text">{ this.translate( 'Recommended Posts (Alpha)' ) }</span>
+									</a>
+								</li>
+							)
+						}
+
+						{
+							// Post Recommendations Cold Start - Used by the Data team to test cold start algorithms
+							config.isEnabled( 'reader/recommendations/posts' ) &&
+							(
+								<li className={ ReaderSidebarHelper.itemLinkClass( '/recommendations/cold', this.props.path, { 'sidebar-streams__post-recommendations': true } ) }>
+									<a href="/recommendations/cold">
+										<Gridicon icon="star" size={ 24 } />
+										<span className="menu-link-text">{ this.translate( 'Coldstart (Alpha)' ) }</span>
+									</a>
+								</li>
+							)
+						}
+
+						{
+							isDiscoverEnabled()
 							? (
 									<li className={ ReaderSidebarHelper.itemLinkClass( '/discover', this.props.path, { 'sidebar-streams__discover': true } ) }>
 										<a href="/discover">
@@ -193,7 +221,7 @@ const ReaderSidebar = React.createClass( {
 							)
 						}
 
-						<li className={ ReaderSidebarHelper.itemLinkClassStartsWithOneOf( [ '/recommendations', '/tags' ], this.props.path, { 'sidebar-streams__recommendations': true } ) }>
+						<li className={ ReaderSidebarHelper.itemLinkClass( '/recommendations', this.props.path, { 'sidebar-streams__recommendations': true } ) }>
 							<a href="/recommendations">
 								<Gridicon icon="thumbs-up" size={ 24 } />
 								<span className="menu-link-text">{ this.translate( 'Recommendations' ) }</span>
@@ -226,7 +254,10 @@ const ReaderSidebar = React.createClass( {
 					onTagExists={ this.highlightNewTag }
 					currentTag={ this.state.currentTag } />
 
+				</SidebarRegion>
+
 				{ this.renderAppPromo() }
+
 				<SidebarFooter />
 			</Sidebar>
 		);

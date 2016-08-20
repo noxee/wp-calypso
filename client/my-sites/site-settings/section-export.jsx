@@ -2,14 +2,13 @@
  * External dependencies
  */
 import React, { Component } from 'react';
-import { Provider } from 'react-redux';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
 import EmptyContent from 'components/empty-content';
 import ExporterContainer from 'my-sites/exporter';
-import i18n from 'lib/mixins/i18n';
 
 export default class SiteSettingsExport extends Component {
 	render() {
@@ -26,10 +25,6 @@ export default class SiteSettingsExport extends Component {
 			);
 		}
 
-		return (
-			<Provider store={ this.props.store }>
-				<ExporterContainer site={ this.props.site } />
-			</Provider>
-		);
+		return <ExporterContainer site={ this.props.site } />;
 	}
 }

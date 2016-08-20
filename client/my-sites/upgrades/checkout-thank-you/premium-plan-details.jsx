@@ -3,21 +3,26 @@
  */
 import find from 'lodash/find';
 import React from 'react';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
 import config from 'config';
 import CustomDomainPurchaseDetail from './custom-domain-purchase-detail';
-import i18n from 'lib/mixins/i18n';
+import GoogleVoucherDetails from './google-voucher';
+import { isWordadsInstantActivationEligible } from 'lib/ads/utils';
 import { isPremium } from 'lib/products-values';
 import paths from 'lib/paths';
 import PurchaseDetail from 'components/purchase-detail';
+import QuerySiteVouchers from 'components/data/query-site-vouchers';
 
 const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
-	const adminUrl = selectedSite.URL + '/wp-admin/',
-		customizeLink = config.isEnabled( 'manage/customize' ) ? '/customize/' + selectedSite.slug : adminUrl + 'customize.php?return=' + encodeURIComponent( window.location.href ),
-		plan = find( sitePlans.data, isPremium );
+	const adminUrl = selectedSite.URL + '/wp-admin/';
+	const customizerInAdmin = adminUrl + 'customize.php?return=' + encodeURIComponent( window.location.href );
+	const customizeLink = config.isEnabled( 'manage/customize' ) ? '/customize/' + selectedSite.slug : customizerInAdmin;
+	const plan = find( sitePlans.data, isPremium ),
+		isPremiumPlan = isPremium( selectedSite.plan );
 
 	return (
 		<div>
@@ -25,14 +30,18 @@ const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 
 			<PurchaseDetail
 				icon="speaker"
-				title={ i18n.translate( 'No Ads' ) }
-				description={
-					i18n.translate(
-						'Premium plan automatically removes all Ads from your site. ' +
-						'Now your visitors can enjoy your great content without distractions!'
-					)
+				title={ i18n.translate( 'Advertising Removed' ) }
+				description={ isPremiumPlan
+					? i18n.translate( 'With your plan, all WordPress.com advertising has been removed from your site.' +
+						' You can upgrade to a Business plan to also remove the WordPress.com footer credit.' )
+					: i18n.translate( 'With your plan, all WordPress.com advertising has been removed from your site.' )
 				}
 			/>
+
+			<QuerySiteVouchers siteId={ selectedSite.ID } />
+			<div>
+				<GoogleVoucherDetails selectedSite={ selectedSite } />
+			</div>
 
 			{ ! selectedFeature &&
 				<PurchaseDetail
@@ -60,6 +69,20 @@ const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 				}
 				buttonText={ i18n.translate( 'Start a new post' ) }
 				href={ paths.newPost( selectedSite ) } />
+			{
+				isWordadsInstantActivationEligible( selectedSite ) &&
+				<PurchaseDetail
+					icon="speaker"
+					title={ i18n.translate( 'Easily monetize your site' ) }
+					description={
+						i18n.translate(
+							'Take advantage of WordAds instant activation on your upgraded site. ' +
+							'WordAds lets you earn money by displaying promotional content.'
+						)
+					}
+					buttonText={ i18n.translate( 'Start Earning' ) }
+					href={ '/ads/settings/' + selectedSite.slug } />
+			}
 		</div>
 	);
 };

@@ -2,6 +2,7 @@
  * Internal dependencies
  */
 import { States } from './constants.js';
+import { get } from 'lodash/object';
 
 export const getExportingState = ( state, siteId ) => {
 	const exportingState = state.siteSettings.exporter.exportingState;
@@ -9,7 +10,7 @@ export const getExportingState = ( state, siteId ) => {
 		return States.READY;
 	}
 	return exportingState[ siteId ];
-}
+};
 
 /**
  * Indicates whether an export activity is in progress.
@@ -36,5 +37,77 @@ export function isExporting( state, siteId ) {
 	return exportingState === States.EXPORTING;
 }
 
+export function isDateRangeValid( state, siteId, postType ) {
+	const site = state.siteSettings.exporter.selectedAdvancedSettings[ siteId ];
+	if ( ! site ) {
+		return true;
+	}
+	const values = site[ postType ];
+	if ( ! values ) {
+		return true;
+	}
+
+	const startDate = values.start_date;
+	const endDate = values.end_date;
+	if ( startDate && endDate && startDate > endDate ) {
+		return false;
+	}
+
+	return true;
+}
+
+export const getAdvancedSettings = ( state, siteId ) => state.siteSettings.exporter.advancedSettings[ siteId ];
 export const getSelectedPostType = ( state ) => state.siteSettings.exporter.selectedPostType;
-export const advancedSettings = ( state, siteId ) => state.siteSettings.exporter.advancedSettings[ siteId ];
+export const getPostTypeFieldOptions = ( state, siteId, postType, fieldName ) => {
+	// Choose which set of options to return for the given field name
+	const optionSet = get( {
+		author: 'authors',
+		status: 'statuses',
+		start_date: 'dates',
+		end_date: 'dates',
+		category: 'categories',
+	}, fieldName, null );
+
+	const advancedSettings = getAdvancedSettings( state, siteId );
+	if ( ! advancedSettings ) {
+		return null;
+	}
+	const fields = advancedSettings[ postType ];
+	if ( ! fields ) {
+		return null;
+	}
+	return fields[ optionSet ] || null;
+};
+
+export const getPostTypeFieldValues = ( state, siteId, postType ) => {
+	const site = state.siteSettings.exporter.selectedAdvancedSettings[ siteId ];
+	if ( ! site ) {
+		return null;
+	}
+	return site[ postType ] || null;
+};
+
+export const getPostTypeFieldValue = ( state, siteId, postType, fieldName ) => {
+	const fields = getPostTypeFieldValues( state, siteId, postType );
+	if ( ! fields ) {
+		return null;
+	}
+	return fields[ fieldName ] || null;
+};
+
+/**
+ * Prepare currently selected advanced settings for an /exports/start request
+ * @param  {Object} state  Global state tree
+ * @param  {number} siteId The ID of the site
+ * @return {Object}        The request body
+ */
+export function prepareExportRequest( state, siteId, { exportAll = true } = {} ) {
+	// Request body is empty if we're just exporting everything
+	if ( exportAll ) {
+		return null;
+	}
+
+	const postType = getSelectedPostType( state );
+	const selectedFieldValues = getPostTypeFieldValues( state, siteId, postType );
+	return Object.assign( { post_type: postType }, selectedFieldValues );
+}

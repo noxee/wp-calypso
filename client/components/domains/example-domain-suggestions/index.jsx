@@ -9,13 +9,15 @@ import classNames from 'classnames';
  * Internal dependencies
  */
 import Card from 'components/card';
-import CompactCard from 'components/card/compact';
 import analytics from 'lib/analytics';
 import wpcom from 'lib/wp';
-import { abtest } from 'lib/abtest';
+import PremiumPopover from 'components/plans/premium-popover';
 
 module.exports = React.createClass( {
 	displayName: 'ExampleDomainSuggestions',
+	propTypes: {
+		domainsWithPlansOnly: React.PropTypes.bool.isRequired
+	},
 
 	getInitialState: function() {
 		return {
@@ -50,6 +52,16 @@ module.exports = React.createClass( {
 			return this.translate( 'Free' );
 		}
 
+		if ( cost && this.props.domainsWithPlansOnly ) {
+			return (
+				<span className="example-domain-suggestions__premium-price" ref="premiumPrice">
+					<PremiumPopover
+						position="bottom left"
+						textLabel={ this.translate( 'Included in WordPress.com Premium' ) }/>
+				</span>
+			);
+		}
+
 		return this.translate( 'Starting at %(cost)s {{small}}/ year{{/small}}', {
 			args: {
 				cost: cost
@@ -80,27 +92,35 @@ module.exports = React.createClass( {
 	},
 
 	render: function() {
-		let examples, mappingInformation;
+		let mappingInformation;
 
 		if ( ! isEmpty( this.props.products ) ) {
-			mappingInformation = this.translate(
-				'{{strong}}Already own a domain?{{/strong}} ' +
-				'{{mappingLink}}Map it{{/mappingLink}} for %(mappingCost)s.', {
-					args: {
-						mappingCost: this.props.products.domain_map.cost_display
-					},
-
-					components: {
-						mappingLink: <a onClick={ this.handleClickMappingLink } href={ this.props.mapDomainUrl } />,
-						strong: <strong />
+			const components = {
+				mappingLink: <a onClick={ this.handleClickMappingLink } href={ this.props.mapDomainUrl } />,
+				strong: <strong />
+			};
+			if ( this.props.domainsWithPlansOnly ) {
+				mappingInformation = this.translate(
+					'{{strong}}Already own a domain?{{/strong}} {{mappingLink}}Map it{{/mappingLink}} with WordPress.com' +
+					' Premium.',
+					{ components }
+				);
+			} else {
+				mappingInformation = this.translate(
+					'{{strong}}Already own a domain?{{/strong}} ' +
+					'{{mappingLink}}Map it{{/mappingLink}} for %(mappingCost)s.', {
+						args: {
+							mappingCost: this.props.products.domain_map.cost_display
+						},
+						components
 					}
-				}
-			);
+				);
+			}
 		} else {
 			mappingInformation = this.translate( 'Loading…' );
 		}
 
-		examples = (
+		return (
 			<Card className="example-domain-suggestions">
 				<div className="example-domain-suggestions__illustration" />
 				<div className="example-domain-suggestions__information">
@@ -116,7 +136,5 @@ module.exports = React.createClass( {
 				</div>
 			</Card>
 		);
-
-		return examples;
 	}
 } );

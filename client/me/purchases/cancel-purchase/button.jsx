@@ -7,16 +7,20 @@ import React from 'react';
 /**
  * Internal Dependencies
  */
+import config from 'config';
 import analytics from 'lib/analytics';
 import Button from 'components/button';
-import { cancelAndRefundPurchase, cancelPurchase } from 'lib/upgrades/actions';
+import { cancelAndRefundPurchase, cancelPurchase, submitSurvey } from 'lib/upgrades/actions';
+import { clearPurchases } from 'state/purchases/actions';
 import { connect } from 'react-redux';
 import Dialog from 'components/dialog';
+import CancelPurchaseForm from 'components/marketing-survey/cancel-purchase-form';
 import { getName, getSubscriptionEndDate, isOneTimePurchase, isRefundable, isSubscription } from 'lib/purchases';
-import { isDomainRegistration } from 'lib/products-values';
+import { isDomainRegistration, isTheme, isGoogleApps } from 'lib/products-values';
 import notices from 'notices';
 import paths from 'me/purchases/paths';
 import { refreshSitePlans } from 'state/sites/plans/actions';
+import FormSectionHeading from 'components/forms/form-section-heading';
 
 const CancelPurchaseButton = React.createClass( {
 	propTypes: {
@@ -26,7 +30,14 @@ const CancelPurchaseButton = React.createClass( {
 
 	getInitialState() {
 		return {
-			disabled: false
+			disabled: false,
+			showDialog: false,
+			isRemoving: false,
+			surveyStep: 1,
+			survey: {
+				questionOneRadio: null,
+				questionTwoRadio: null
+			}
 		};
 	},
 
@@ -42,55 +53,82 @@ const CancelPurchaseButton = React.createClass( {
 
 	closeDialog() {
 		this.setState( {
-			showDialog: false
+			showDialog: false,
+			surveyStep: 1,
+			survey: {
+				questionOneRadio: null,
+				questionTwoRadio: null
+			}
 		} );
 	},
 
+	changeSurveyStep() {
+		this.setState( {
+			surveyStep: this.state.surveyStep === 1 ? 2 : 1,
+		} );
+	},
+
+	onSurveyChange( update ) {
+		this.setState( {
+			survey: update,
+		} );
+	},
+
+	isSurveyIncomplete() {
+		return this.state.survey.questionOneRadio === null || this.state.survey.questionTwoRadio === null ||
+			( this.state.survey.questionOneRadio === 'anotherReasonOne' && this.state.survey.questionOneText === '' ) ||
+			( this.state.survey.questionTwoRadio === 'anotherReasonTwo' && this.state.survey.questionTwoText === '' );
+	},
+
 	renderCancelConfirmationDialog() {
-		const { domain, priceText } = this.props.purchase,
-			purchaseName = getName( this.props.purchase ),
-			buttons = [
-				{
+		const buttons = {
+				close: {
 					action: 'close',
 					label: this.translate( "No, I'll Keep It" )
 				},
-				{
+				next: {
+					action: 'next',
+					disabled: this.state.isRemoving || this.isSurveyIncomplete(),
+					label: this.translate( 'Next' ),
+					onClick: this.changeSurveyStep
+				},
+				prev: {
+					action: 'prev',
+					disabled: this.state.isRemoving,
+					label: this.translate( 'Previous Step' ),
+					onClick: this.changeSurveyStep
+				},
+				cancel: {
 					action: 'cancel',
 					label: this.translate( 'Yes, Cancel Now' ),
 					isPrimary: true,
 					disabled: this.state.submitting,
 					onClick: this.submitCancelAndRefundPurchase
-				},
-			];
+				}
+			},
+			purchaseName = getName( this.props.purchase ),
+			inStepOne = this.state.surveyStep === 1;
+
+		let buttonsArr;
+		if ( ! config.isEnabled( 'upgrades/removal-survey' ) ) {
+			buttonsArr = [ buttons.close, buttons.cancel ];
+		} else {
+			buttonsArr = inStepOne ? [ buttons.close, buttons.next ] : [ buttons.prev, buttons.close, buttons.cancel ];
+		}
 
 		return (
 			<Dialog
 				isVisible={ this.state.showDialog }
-				buttons={ buttons }
+				buttons={ buttonsArr }
 				onClose={ this.closeDialog }
-				className="cancel-purchase-button__warning-dialog">
-				<h1>
-					{ this.translate( 'Cancel %(purchaseName)s', {
-						args: {
-							purchaseName
-						}
-					} ) }
-				</h1>
-				<p>
-					{ this.translate(
-						'Are you sure you want to cancel and remove %(purchaseName)s from {{em}}%(domain)s{{/em}}? ' +
-						'All plan features and custom changes will be removed from your site and you will be refunded %(priceText)s.', {
-							args: {
-								purchaseName,
-								domain,
-								priceText
-							},
-							components: {
-								em: <em />
-							}
-						}
-					) }
-				</p>
+				className="cancel-purchase__button-warning-dialog">
+				<FormSectionHeading>{ this.translate( 'Cancel %(purchaseName)s', { args: { purchaseName } } ) }</FormSectionHeading>
+				<CancelPurchaseForm
+					surveyStep={ this.state.surveyStep }
+					showSurvey={ config.isEnabled( 'upgrades/removal-survey' ) }
+					defaultContent={ this.renderCancellationEffect() }
+					onInputChange={ this.onSurveyChange }
+				/>
 			</Dialog>
 		);
 	},
@@ -113,9 +151,12 @@ const CancelPurchaseButton = React.createClass( {
 
 			this.props.refreshSitePlans( purchase.siteId );
 
+			this.props.clearPurchases();
+
 			if ( success ) {
 				notices.success( this.translate(
-					'%(purchaseName)s was successfully cancelled. It will be available for use until it expires on %(subscriptionEndDate)s.',
+					'%(purchaseName)s was successfully cancelled. It will be available ' +
+					'for use until it expires on %(subscriptionEndDate)s.',
 					{
 						args: {
 							purchaseName,
@@ -165,6 +206,8 @@ const CancelPurchaseButton = React.createClass( {
 
 		this.props.refreshSitePlans( this.props.purchase.siteId );
 
+		this.props.clearPurchases();
+
 		analytics.tracks.recordEvent(
 			'calypso_purchases_cancel_form_submit',
 			{ product_slug: this.props.purchase.productSlug }
@@ -178,7 +221,77 @@ const CancelPurchaseButton = React.createClass( {
 			submitting: true
 		} );
 
+		if ( config.isEnabled( 'upgrades/removal-survey' ) ) {
+			const { purchase } = this.props,
+				surveyData = {
+					'why-cancel': {
+						response: this.state.survey.questionOneRadio,
+						text: this.state.survey.questionOneText
+					},
+					'next-adventure': {
+						response: this.state.survey.questionTwoRadio,
+						text: this.state.survey.questionTwoText
+					},
+					'what-better': { text: this.state.survey.questionThreeText },
+					purchase: purchase.productSlug,
+					type: 'refund'
+				};
+
+			submitSurvey( 'calypso-remove-purchase', this.props.selectedSite.ID, surveyData );
+		}
+
 		cancelAndRefundPurchase( this.props.purchase.id, { product_id: this.props.purchase.productId }, this.handleSubmit );
+	},
+
+	renderCancellationEffect() {
+		const { domain, refundText } = this.props.purchase,
+			purchaseName = getName( this.props.purchase );
+
+		let cancelationEffectText = this.translate(
+			'All plan features and custom changes will be removed from your site and you will be refunded %(cost)s.', {
+				args: {
+					cost: refundText
+				}
+			}
+		);
+
+		if ( isTheme( this.props.purchase ) ) {
+			cancelationEffectText = this.translate(
+				'Your site\'s appearance will revert to its previously selected theme and you will be refunded %(cost)s.', {
+					args: {
+						cost: refundText
+					}
+				}
+			);
+		}
+
+		if ( isGoogleApps( this.props.purchase ) ) {
+			cancelationEffectText = this.translate(
+				'You will be refunded %(cost)s, but your Google Apps account will continue working without interruption. ' +
+				'You will be able to manage your Google Apps billing directly through Google.', {
+					args: {
+						cost: refundText
+					}
+				}
+			);
+		}
+
+		return (
+			<p>
+				{ this.translate(
+					'Are you sure you want to cancel and remove %(purchaseName)s from {{em}}%(domain)s{{/em}}? ', {
+						args: {
+							purchaseName,
+							domain
+						},
+						components: {
+							em: <em />
+						}
+					}
+				) }
+				{ cancelationEffectText }
+			</p>
+		);
 	},
 
 	render() {
@@ -230,11 +343,8 @@ const CancelPurchaseButton = React.createClass( {
 
 export default connect(
 	null,
-	( dispatch ) => {
-		return {
-			refreshSitePlans( siteId ) {
-				dispatch( refreshSitePlans( siteId ) );
-			}
-		};
+	{
+		clearPurchases,
+		refreshSitePlans
 	}
 )( CancelPurchaseButton );

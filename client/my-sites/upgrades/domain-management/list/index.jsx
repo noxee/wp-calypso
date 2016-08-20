@@ -35,7 +35,7 @@ import NoticeAction from 'components/notice/notice-action';
 import { hasDomainCredit } from 'state/sites/plans/selectors';
 import TrackComponentView from 'lib/analytics/track-component-view';
 import { recordTracksEvent } from 'state/analytics/actions';
-import { abtest } from 'lib/abtest';
+import { isPlanFeaturesEnabled } from 'lib/plans';
 
 export const List = React.createClass( {
 	mixins: [ analyticsMixin( 'domainManagement', 'list' ) ],
@@ -53,7 +53,7 @@ export const List = React.createClass( {
 			return <DomainWarnings
 				domains={ this.props.domains.list }
 				selectedSite={ this.props.selectedSite }
-				ruleWhiteList={ [ 'newDomainsWithPrimary', 'newDomains', 'unverifiedDomains' ] } />;
+				ruleWhiteList={ [ 'newDomainsWithPrimary', 'newDomains', 'unverifiedDomains', 'pendingGappsTosAcceptanceDomains' ] } />;
 		}
 	},
 
@@ -62,40 +62,32 @@ export const List = React.createClass( {
 			return null;
 		}
 
-		if ( abtest( 'domainCreditsInfoNotice' ) === 'showNotice' ) {
-			const eventName = 'calypso_domain_credit_reminder_impression';
-			const eventProperties = { cta_name: 'domain_info_notice' };
-			return (
-				<Notice
-					status="is-info"
-					showDismiss={ false }
-					text={ this.translate( 'You have an unused domain credit!' ) }
-					icon="globe">
-					<NoticeAction onClick={ this.props.clickClaimDomainNotice } href={ `/domains/add/${ this.props.selectedSite.slug }` }>
-						{ this.translate( 'Claim Free Domain' ) }
-						<TrackComponentView eventName={ eventName } eventProperties={ eventProperties } />
-					</NoticeAction>
-				</Notice>
-			);
-		}
-
-		//otherwise still track what happens when we don't show a notice
-		const eventName = 'calypso_domain_credit_reminder_no_impression';
+		const eventName = 'calypso_domain_credit_reminder_impression';
 		const eventProperties = { cta_name: 'domain_info_notice' };
 		return (
-			<TrackComponentView eventName={ eventName } eventProperties={ eventProperties } />
+			<Notice
+				status="is-info"
+				showDismiss={ false }
+				text={ this.translate( 'Free domain available' ) }
+				icon="globe">
+				<NoticeAction onClick={ this.props.clickClaimDomainNotice } href={ `/domains/add/${ this.props.selectedSite.slug }` }>
+					{ this.translate( 'Claim Free Domain' ) }
+					<TrackComponentView eventName={ eventName } eventProperties={ eventProperties } />
+				</NoticeAction>
+			</Notice>
 		);
+
 	},
 
 	render() {
-		var headerText = this.translate( 'Domains', { context: 'A navigation label.' } );
+		const headerText = this.translate( 'Domains', { context: 'A navigation label.' } );
 
 		if ( ! this.props.domains ) {
 			return null;
 		}
 
 		return (
-			<Main className="domain-management-list">
+			<Main wideLayout={ isPlanFeaturesEnabled() }>
 				<SidebarNavigation />
 				<UpgradesNavigation
 					path={ this.props.context.path }
@@ -222,6 +214,10 @@ export const List = React.createClass( {
 	},
 
 	changePrimaryButton() {
+		if ( ! this.props.domains.list || this.props.domains.list.length < 2 ) {
+			return null;
+		}
+
 		return (
 			<Button
 				compact
@@ -329,13 +325,13 @@ export const List = React.createClass( {
 	},
 
 	goToEditDomainRoot( domain ) {
-		page( paths.domainManagementEdit( this.props.selectedSite.domain, domain.name ) );
+		page( paths.domainManagementEdit( this.props.selectedSite.slug, domain.name ) );
 	}
 } );
 
 export default connect( ( state, ownProps ) => {
 	return {
-		hasDomainCredit: hasDomainCredit( state, ownProps.selectedSite.ID )
+		hasDomainCredit: !! ownProps.selectedSite && hasDomainCredit( state, ownProps.selectedSite.ID )
 	};
 }, ( dispatch ) => {
 	return {

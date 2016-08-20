@@ -5,6 +5,7 @@ import assign from 'lodash/assign';
 import defer from 'lodash/defer';
 import isEmpty from 'lodash/isEmpty';
 import async from 'async';
+import { parse as parseURL } from 'url';
 
 /**
  * Internal dependencies
@@ -18,12 +19,12 @@ import SignupCart from 'lib/signup/cart';
 import { startFreeTrial } from 'lib/upgrades/actions';
 import { PLAN_PREMIUM } from 'lib/plans/constants';
 
-function addDomainItemsToCart( callback, dependencies, { domainItem, googleAppsCartItem, isPurchasingItem, siteUrl, themeSlug, themeItem } ) {
+function addDomainItemsToCart( callback, dependencies, { domainItem, googleAppsCartItem, isPurchasingItem, siteUrl, themeSlug, themeSlugWithRepo, themeItem } ) {
 	wpcom.undocumented().sitesNew( {
 		blog_name: siteUrl,
 		blog_title: siteUrl,
 		options: {
-			theme: dependencies.theme
+			theme: dependencies.theme || themeSlugWithRepo
 		},
 		validate: false,
 		find_available_url: isPurchasingItem
@@ -34,7 +35,9 @@ function addDomainItemsToCart( callback, dependencies, { domainItem, googleAppsC
 			return;
 		}
 
-		const siteSlug = response.blog_details.blogname + '.wordpress.com';
+		const parsedBlogURL = parseURL( response.blog_details.url );
+
+		const siteSlug = parsedBlogURL.hostname;
 		const siteId = response.blog_details.blogid;
 		const isFreeThemePreselected = themeSlug && ! themeItem;
 		const providedDependencies = {
@@ -191,7 +194,9 @@ module.exports = {
 			let providedDependencies, siteSlug;
 
 			if ( response && response.blog_details ) {
-				siteSlug = response.blog_details.blogname + '.wordpress.com';
+				const parsedBlogURL = parseURL( response.blog_details.url );
+				siteSlug = parsedBlogURL.hostname;
+
 				providedDependencies = { siteSlug };
 			}
 

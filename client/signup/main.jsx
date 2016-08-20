@@ -4,6 +4,7 @@
 import debugModule from 'debug';
 const debug = debugModule( 'calypso:signup' );
 import React from 'react';
+import { connect } from 'react-redux';
 import ReactCSSTransitionGroup from 'react-addons-css-transition-group';
 import page from 'page';
 import startsWith from 'lodash/startsWith';
@@ -23,6 +24,7 @@ import reject from 'lodash/reject';
  */
 import config from 'config';
 import SignupDependencyStore from 'lib/signup/dependency-store';
+import { getSignupDependencyStore } from 'state/signup/dependency-store/selectors';
 import SignupProgressStore from 'lib/signup/progress-store';
 import SignupFlowController from 'lib/signup/flow-controller';
 import LocaleSuggestions from './locale-suggestions';
@@ -36,28 +38,34 @@ const user = userModule();
 import analytics from 'lib/analytics';
 import SignupProcessingScreen from 'signup/processing-screen';
 import utils from './utils';
+import { currentUserHasFlag, getCurrentUser } from 'state/current-user/selectors';
+import { DOMAINS_WITH_PLANS_ONLY } from 'state/current-user/constants';
 import * as oauthToken from 'lib/oauth-token';
 
 /**
  * Constants
  */
-const MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED = 1000;
+const MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED = 8000;
 
 const Signup = React.createClass( {
 	displayName: 'Signup',
 
+	contextTypes: {
+		store: React.PropTypes.object
+	},
+
 	getInitialState() {
+		SignupDependencyStore.setReduxStore( this.context.store );
+
 		return {
 			login: false,
 			progress: SignupProgressStore.get(),
-			dependencies: SignupDependencyStore.get(),
+			dependencies: this.props.signupDependencies,
 			loadingScreenStartTime: undefined,
-			resumingStep: undefined
+			resumingStep: undefined,
+			user: user.get(),
+			loginHandler: null
 		};
-	},
-
-	loadDependenciesFromStore() {
-		this.setState( { dependencies: SignupDependencyStore.get() } );
 	},
 
 	loadProgressFromStore() {
@@ -146,6 +154,14 @@ const Signup = React.createClass( {
 
 		analytics.tracks.recordEvent( 'calypso_signup_complete', { flow: this.props.flowName } );
 
+		this.signupFlowController.reset();
+
+		this.setState( {
+			loginHandler: this.handleLogin.bind( this, dependencies, destination )
+		} );
+	},
+
+	handleLogin( dependencies, destination ) {
 		const userIsLoggedIn = Boolean( user.get() );
 
 		if ( userIsLoggedIn ) {
@@ -167,20 +183,16 @@ const Signup = React.createClass( {
 				redirectTo: this.loginRedirectTo( destination )
 			} );
 		}
-
-		this.signupFlowController.reset();
 	},
 
 	componentDidMount() {
 		debug( 'Signup component mounted' );
 		SignupProgressStore.on( 'change', this.loadProgressFromStore );
-		SignupProgressStore.on( 'change', this.loadDependenciesFromStore );
 	},
 
 	componentWillUnmount() {
 		debug( 'Signup component unmounted' );
 		SignupProgressStore.off( 'change', this.loadProgressFromStore );
-		SignupProgressStore.off( 'change', this.loadDependenciesFromStore );
 	},
 
 	loginRedirectTo( path ) {
@@ -247,14 +259,16 @@ const Signup = React.createClass( {
 		var flowSteps = flows.getFlow( this.props.flowName ).steps,
 			currentStepIndex = indexOf( flowSteps, this.props.stepName ),
 			nextStepName = flowSteps[ currentStepIndex + 1 ],
-			nextStepSection = this.state.progress[ currentStepIndex + 1 ] ?
-				this.state.progress[ currentStepIndex + 1 ].stepSectionName :
-				'';
+			nextProgressItem = this.state.progress[ currentStepIndex + 1 ],
+			nextStepSection = nextProgressItem && nextProgressItem.stepSectionName || '';
+		this.goToStep( nextStepName, nextStepSection );
+	},
 
+	goToStep( stepName, stepSection ) {
 		clearInterval( this.windowScroller );
 
-		if ( ! this.isEveryStepSubmitted() && nextStepName ) {
-			page( utils.getStepUrl( this.props.flowName, nextStepName, nextStepSection, this.props.locale ) );
+		if ( ! this.isEveryStepSubmitted() && stepName ) {
+			page( utils.getStepUrl( this.props.flowName, stepName, stepSection, this.props.locale ) );
 		} else if ( this.isEveryStepSubmitted() ) {
 			this.goToFirstInvalidStep();
 		}
@@ -300,24 +314,35 @@ const Signup = React.createClass( {
 		let currentStepProgress = find( this.state.progress, { stepName: this.props.stepName } ),
 			CurrentComponent = stepComponents[ this.props.stepName ],
 			propsFromConfig = assign( {}, this.props, steps[ this.props.stepName ].props ),
-			stepKey = this.state.loadingScreenStartTime ? 'processing' : this.props.stepName;
+			stepKey = this.state.loadingScreenStartTime ? 'processing' : this.props.stepName,
+			flow = flows.getFlow( this.props.flowName ),
+			hideFreePlan = ! ! (
+				this.props.signupDependencies &&
+				this.props.signupDependencies.domainItem &&
+				this.props.signupDependencies.domainItem.is_domain_registration &&
+				this.props.domainsWithPlansOnly
+			);
 
 		return (
 			<div className="signup__step" key={ stepKey }>
 				{ this.localeSuggestions() }
 				{
 					this.state.loadingScreenStartTime ?
-					<SignupProcessingScreen steps={ this.state.progress } /> :
+					<SignupProcessingScreen steps={ this.state.progress } user={ this.state.user } loginHandler={ this.state.loginHandler }/> :
 					<CurrentComponent
 						path={ this.props.path }
 						step={ currentStepProgress }
+						steps={ flow.steps }
 						stepName={ this.props.stepName }
+						meta={ flow.meta || {} }
 						goToNextStep={ this.goToNextStep }
+						goToStep={ this.goToStep }
 						flowName={ this.props.flowName }
 						signupProgressStore={ this.state.progress }
-						signupDependencies={ this.state.dependencies }
+						signupDependencies={ this.props.signupDependencies }
 						stepSectionName={ this.props.stepSectionName }
 						positionInFlow={ this.positionInFlow() }
+						hideFreePlan={ hideFreePlan }
 						{ ...propsFromConfig } />
 				}
 			</div>
@@ -353,4 +378,11 @@ const Signup = React.createClass( {
 	}
 } );
 
-export default Signup;
+export default connect(
+	state => ( {
+		domainsWithPlansOnly: getCurrentUser( state ) ? currentUserHasFlag( state, DOMAINS_WITH_PLANS_ONLY ) : true,
+		signupDependencies: getSignupDependencyStore( state ),
+	} ),
+	() => ( {} ),
+	undefined,
+	{ pure: false } )( Signup );

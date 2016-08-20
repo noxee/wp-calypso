@@ -3,9 +3,13 @@
  */
 var debug = require( 'debug' )( 'calypso:analytics' ),
 	assign = require( 'lodash/assign' ),
+	times = require( 'lodash/times' ),
 	omit = require( 'lodash/omit' ),
+	pickBy = require( 'lodash/pickBy' ),
 	startsWith = require( 'lodash/startsWith' ),
-	isUndefined = require( 'lodash/isUndefined' );
+	isUndefined = require( 'lodash/isUndefined' ),
+	url = require( 'url' ),
+	qs = require( 'qs' );
 
 /**
  * Internal dependencies
@@ -15,6 +19,9 @@ var config = require( 'config' ),
 	_superProps,
 	_user;
 
+import { retarget } from 'lib/analytics/ad-tracking';
+import emitter from 'lib/mixins/emitter';
+
 // Load tracking scripts
 window._tkq = window._tkq || [];
 window.ga = window.ga || function() {
@@ -22,7 +29,7 @@ window.ga = window.ga || function() {
 };
 window.ga.l = +new Date();
 
-loadScript( '//stats.wp.com/w.js?52' );
+loadScript( '//stats.wp.com/w.js?53' ); // W_JS_VER
 loadScript( '//www.google-analytics.com/analytics.js' );
 
 function buildQuerystring( group, name ) {
@@ -106,6 +113,7 @@ var analytics = {
 			mostRecentUrlPath = urlPath;
 			analytics.tracks.recordPageView( urlPath );
 			analytics.ga.recordPageView( urlPath, pageTitle );
+			analytics.emit( 'page-view', urlPath, pageTitle );
 		}
 	},
 
@@ -143,13 +151,46 @@ var analytics = {
 			debug( 'Recording event "%s" with actual props %o', eventName, eventProperties );
 
 			window._tkq.push( [ 'recordEvent', eventName, eventProperties ] );
+			analytics.emit( 'record-event', eventName, eventProperties );
 		},
 
 		recordPageView: function( urlPath ) {
-			analytics.tracks.recordEvent( 'calypso_page_view', {
-				'path': urlPath
-			} );
+			let eventProperties = {
+				path: urlPath
+			};
+
+			// Record all `utm` marketing parameters as event properties on the page view event
+			// so we can analyze their performance with our analytics tools
+			if ( window.location ) {
+				const parsedUrl = url.parse( window.location.href );
+				const urlParams = qs.parse( parsedUrl.query );
+				const utmParams = pickBy( urlParams, function( value, key ) {
+					return startsWith( key, 'utm_' );
+				} );
+
+				eventProperties = assign( eventProperties, utmParams );
+			}
+
+			analytics.tracks.recordEvent( 'calypso_page_view', eventProperties );
+
+			// Ensure every Calypso user is added to our retargeting audience via the AdWords retargeting tag
+			retarget();
+		},
+
+		createRandomId:  function() {
+			var randomBytesLength = 9, // 9 * 4/3 = 12 - this is to avoid getting padding of a random byte string when it is base64 encoded
+					randomBytes = [];
+
+			if ( window.crypto && window.crypto.getRandomValues ) {
+				randomBytes = new Uint8Array( randomBytesLength );
+				window.crypto.getRandomValues( randomBytes );
+			} else {
+				randomBytes = times( randomBytesLength, () => Math.floor( Math.random() * 256 ) );
+			}
+
+			return btoa( String.fromCharCode.apply( String, randomBytes ) );
 		}
+
 	},
 
 	statsd: {
@@ -273,5 +314,5 @@ var analytics = {
 		window._tkq.push( [ 'clearIdentity' ] );
 	}
 };
-
+emitter( analytics );
 module.exports = analytics;

@@ -2,6 +2,7 @@
  * External Dependencies
  */
 import assign from 'lodash/assign';
+import { connect } from 'react-redux';
 import page from 'page';
 import React from 'react';
 
@@ -11,33 +12,47 @@ import React from 'react';
 import analytics from 'lib/analytics';
 import camelCase from 'lodash/camelCase';
 import Card from 'components/card';
-import { clearPurchases } from 'lib/upgrades/actions/purchases';
+import { clearPurchases } from 'state/purchases/actions';
 import CompactCard from 'components/card/compact';
 import { createPaygateToken } from 'lib/store-transactions';
 import CreditCardForm from 'components/upgrades/credit-card-form';
+import CountriesList from 'lib/countries-list';
+import EditCardDetailsLoadingPlaceholder from './loading-placeholder';
 import FormButton from 'components/forms/form-button';
 import formState from 'lib/form-state';
 import forOwn from 'lodash/forOwn';
 import HeaderCake from 'components/header-cake' ;
+import { getByPurchaseId, hasLoadedUserPurchasesFromServer } from 'state/purchases/selectors';
 import { getPurchase, goToManagePurchase, isDataLoading, recordPageView } from 'me/purchases/utils';
+import { getSelectedSite as getSelectedSiteSelector } from 'state/ui/selectors';
+import { getStoredCardById, hasLoadedStoredCardsFromServer } from 'state/stored-cards/selectors';
+import { isRenewing } from 'lib/purchases';
+import { isRequestingSites } from 'state/sites/selectors';
 import kebabCase from 'lodash/kebabCase';
 import Main from 'components/main';
 import mapKeys from 'lodash/mapKeys';
 import notices from 'notices';
 import paths from 'me/purchases/paths';
+import QueryStoredCards from 'components/data/query-stored-cards';
+import QueryUserPurchases from 'components/data/query-user-purchases';
 import titles from 'me/purchases/titles';
+import userFactory from 'lib/user';
 import { validateCardDetails } from 'lib/credit-card-details';
 import ValidationErrorList from 'notices/validation-error-list';
 import wpcomFactory from 'lib/wp';
 
+const countriesList = CountriesList.forPayments();
+const user = userFactory();
 const wpcom = wpcomFactory.undocumented();
 
 const EditCardDetails = React.createClass( {
 	propTypes: {
-		card: React.PropTypes.object.isRequired,
-		countriesList: React.PropTypes.object.isRequired,
-		isEditingSpecificCard: React.PropTypes.bool.isRequired,
-		selectedPurchase: React.PropTypes.object.isRequired,
+		card: React.PropTypes.object,
+		cardId: React.PropTypes.string,
+		hasLoadedSites: React.PropTypes.bool.isRequired,
+		hasLoadedStoredCardsFromServer: React.PropTypes.bool.isRequired,
+		hasLoadedUserPurchasesFromServer: React.PropTypes.bool.isRequired,
+		selectedPurchase: React.PropTypes.object,
 		selectedSite: React.PropTypes.oneOfType( [
 			React.PropTypes.object,
 			React.PropTypes.bool
@@ -47,6 +62,7 @@ const EditCardDetails = React.createClass( {
 	getInitialState() {
 		return {
 			form: null,
+			formSubmitting: false,
 			notice: null
 		};
 	},
@@ -60,27 +76,15 @@ const EditCardDetails = React.createClass( {
 		'postalCode'
 	],
 
-	/**
-	 * Merges the specified card object returned by the StoredCards store into a new object with only properties that
-	 * should be used to prefill the credit card form, and with keys matching the corresponding field names.
-	 *
-	 * @param card
-	 * @param fields
-	 */
-	mergeCard( card, fields: {} ) {
-		return assign( {}, fields, {
-			name: card.name
-		} );
-	},
-
 	componentWillMount() {
 		this.redirectIfDataIsInvalid();
 
 		recordPageView( 'edit_card_details', this.props );
 
-		let fields = formState.createNullFieldValues( this.fieldNames );
-		if ( this.props.card.data ) {
-			fields = this.mergeCard( this.props.card.data, fields );
+		const fields = formState.createNullFieldValues( this.fieldNames );
+
+		if ( this.props.card ) {
+			fields.name = this.props.card.name;
 		}
 
 		this.formStateController = formState.Controller( {
@@ -94,6 +98,15 @@ const EditCardDetails = React.createClass( {
 
 	componentWillReceiveProps( nextProps ) {
 		this.redirectIfDataIsInvalid( nextProps );
+
+		recordPageView( 'edit_card_details', this.props, nextProps );
+
+		if ( ! this.props.hasLoadedStoredCardsFromServer && nextProps.hasLoadedStoredCardsFromServer && nextProps.card ) {
+			this.formStateController.handleFieldChange( {
+				name: 'name',
+				value: nextProps.card.name
+			} );
+		}
 	},
 
 	validate( formValues, onComplete ) {
@@ -138,8 +151,15 @@ const EditCardDetails = React.createClass( {
 	onSubmit( event ) {
 		event.preventDefault();
 
+		if ( this.state.formSubmitting ) {
+			return;
+		}
+
+		this.setState( { formSubmitting: true } );
+
 		this.formStateController.handleSubmit( ( hasErrors ) => {
 			if ( hasErrors ) {
+				this.setState( { formSubmitting: false } );
 				return;
 			}
 
@@ -157,17 +177,20 @@ const EditCardDetails = React.createClass( {
 
 		createPaygateToken( 'card_update', cardDetails, ( paygateError, token ) => {
 			if ( paygateError ) {
+				this.setState( { formSubmitting: false } );
 				notices.error( paygateError.message );
 				return;
 			}
 
 			wpcom.updateCreditCard( this.getParamsForApi( token ), ( apiError, response ) => {
 				if ( apiError ) {
+					this.setState( { formSubmitting: false } );
 					notices.error( apiError.message );
 					return;
 				}
 
 				if ( response.error ) {
+					this.setState( { formSubmitting: false } );
 					notices.error( response.error );
 					return;
 				}
@@ -176,9 +199,9 @@ const EditCardDetails = React.createClass( {
 					persistent: true
 				} );
 
-				clearPurchases();
-
 				const { id } = getPurchase( this.props );
+
+				this.props.clearPurchases();
 
 				page( paths.managePurchase( this.props.selectedSite.slug, id ) );
 			} );
@@ -195,7 +218,7 @@ const EditCardDetails = React.createClass( {
 			year: cardDetails[ 'expiration-date' ].split( '/' )[ 1 ],
 			name: cardDetails.name,
 			paygateToken: token,
-			purchaseId: this.props.selectedPurchase.data.id
+			purchaseId: getPurchase( this.props ).id
 		};
 	},
 
@@ -211,10 +234,9 @@ const EditCardDetails = React.createClass( {
 		}
 
 		const purchase = getPurchase( props ),
-			{ selectedSite } = props,
-			card = props.isEditingSpecificCard ? props.card.data : true;
+			{ selectedSite } = props;
 
-		return purchase && card && selectedSite;
+		return purchase && selectedSite;
 	},
 
 	isFieldInvalid( name ) {
@@ -238,25 +260,29 @@ const EditCardDetails = React.createClass( {
 	},
 
 	render() {
-		if ( isDataLoading( this.props ) ) {
+		if ( isDataLoading( this.props ) || ! this.props.hasLoadedStoredCardsFromServer ) {
 			return (
 				<Main className="edit-card-details">
-					{ this.translate( 'Loading…' ) }
+					<QueryStoredCards />
+
+					<QueryUserPurchases userId={ user.get().ID } />
+
+					<EditCardDetailsLoadingPlaceholder />
 				</Main>
 			);
 		}
 
+		const title = isRenewing( getPurchase( this.props ) ) ? titles.editCardDetails : titles.addCardDetails;
+
 		return (
 			<Main className="edit-card-details">
-				<HeaderCake onClick={ goToManagePurchase.bind( null, this.props ) }>
-					{ titles.editCardDetails }
-				</HeaderCake>
+				<HeaderCake onClick={ goToManagePurchase.bind( null, this.props ) }>{ title }</HeaderCake>
 
 				<form onSubmit={ this.onSubmit }>
 					<Card className="edit-card-details__content">
 						<CreditCardForm
 							card={ this.getCardDetails() }
-							countriesList={ this.props.countriesList }
+							countriesList={ countriesList }
 							eventFormName="Edit Card Details Form"
 							isFieldInvalid={ this.isFieldInvalid }
 							onFieldChange={ this.onFieldChange } />
@@ -265,8 +291,12 @@ const EditCardDetails = React.createClass( {
 					<CompactCard className="edit-card-details__footer">
 						<em>{ this.translate( 'All fields required' ) }</em>
 
-						<FormButton type="submit">
-							{ this.translate( 'Save Card', { context: 'Button label', comment: 'Credit card' } ) }
+						<FormButton
+							disabled={ this.state.formSubmitting }
+							type="submit">
+							{ this.state.formSubmitting
+								? this.translate( 'Saving Card…', { context: 'Button label', comment: 'Credit card' } )
+								: this.translate( 'Save Card', { context: 'Button label', comment: 'Credit card' } ) }
 						</FormButton>
 					</CompactCard>
 				</form>
@@ -275,4 +305,14 @@ const EditCardDetails = React.createClass( {
 	}
 } );
 
-export default EditCardDetails;
+export default connect(
+	( state, props ) => ( {
+		card: getStoredCardById( state, props.cardId ),
+		hasLoadedSites: ! isRequestingSites( state ),
+		hasLoadedStoredCardsFromServer: hasLoadedStoredCardsFromServer( state ),
+		hasLoadedUserPurchasesFromServer: hasLoadedUserPurchasesFromServer( state ),
+		selectedPurchase: getByPurchaseId( state, props.purchaseId ),
+		selectedSite: getSelectedSiteSelector( state )
+	} ),
+	{ clearPurchases }
+)( EditCardDetails );

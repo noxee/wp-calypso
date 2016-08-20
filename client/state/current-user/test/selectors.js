@@ -7,11 +7,27 @@ import { expect } from 'chai';
  * Internal dependencies
  */
 import {
+	getCurrentUserId,
 	getCurrentUser,
-	getCurrentUserLocale
+	getCurrentUserLocale,
+	isValidCapability,
+	canCurrentUser,
+	getCurrentUserCurrencyCode
 } from '../selectors';
 
 describe( 'selectors', () => {
+	describe( 'getCurrentUserId()', () => {
+		it( 'should return the current user ID', () => {
+			const currentUserId = getCurrentUserId( {
+				currentUser: {
+					id: 73705554
+				}
+			} );
+
+			expect( currentUserId ).to.equal( 73705554 );
+		} );
+	} );
+
 	describe( '#getCurrentUser()', () => {
 		it( 'should return null if no current user', () => {
 			const selected = getCurrentUser( {
@@ -78,6 +94,105 @@ describe( 'selectors', () => {
 			} );
 
 			expect( locale ).to.equal( 'fr' );
+		} );
+	} );
+
+	describe( 'isValidCapability()', () => {
+		it( 'should return null if the site is not known', () => {
+			const isValid = isValidCapability( {
+				currentUser: {
+					capabilities: {}
+				}
+			}, 2916284, 'manage_options' );
+
+			expect( isValid ).to.be.null;
+		} );
+
+		it( 'should return true if the capability is valid', () => {
+			const isValid = isValidCapability( {
+				currentUser: {
+					capabilities: {
+						2916284: {
+							manage_options: false
+						}
+					}
+				}
+			}, 2916284, 'manage_options' );
+
+			expect( isValid ).to.be.true;
+		} );
+
+		it( 'should return false if the capability is invalid', () => {
+			const isValid = isValidCapability( {
+				currentUser: {
+					capabilities: {
+						2916284: {
+							manage_options: false
+						}
+					}
+				}
+			}, 2916284, 'manage_foo' );
+
+			expect( isValid ).to.be.false;
+		} );
+	} );
+
+	describe( 'canCurrentUser', () => {
+		it( 'should return null if the site is not known', () => {
+			const isCapable = canCurrentUser( {
+				currentUser: {
+					capabilities: {}
+				}
+			}, 2916284, 'manage_options' );
+
+			expect( isCapable ).to.be.null;
+		} );
+
+		it( 'should return the value for the specified capability', () => {
+			const isCapable = canCurrentUser( {
+				currentUser: {
+					capabilities: {
+						2916284: {
+							manage_options: false
+						}
+					}
+				}
+			}, 2916284, 'manage_options' );
+
+			expect( isCapable ).to.be.false;
+		} );
+
+		it( 'should return null if the capability is invalid', () => {
+			const isCapable = canCurrentUser( {
+				currentUser: {
+					capabilities: {
+						2916284: {
+							manage_options: false
+						}
+					}
+				}
+			}, 2916284, 'manage_foo' );
+
+			expect( isCapable ).to.be.null;
+		} );
+	} );
+
+	describe( 'getCurrentUserCurrencyCode', () => {
+		it( 'should return null if currencyCode is not set', () => {
+			const selected = getCurrentUserCurrencyCode( {
+				currentUser: {
+					currencyCode: null
+				}
+			} );
+			expect( selected ).to.equal( null );
+		} );
+		it( 'should return value if currencyCode is set', () => {
+			const selected = getCurrentUserCurrencyCode( {
+				currentUser: {
+					currencyCode: 'USD'
+				}
+			} );
+			expect( selected ).to.equal( 'USD' );
 		} );
 	} );
 } );

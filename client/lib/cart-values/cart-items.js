@@ -12,6 +12,8 @@ var update = require( 'react-addons-update' ),
 	reject = require( 'lodash/reject' ),
 	tail = require( 'lodash/tail' ),
 	some = require( 'lodash/some' ),
+	uniq = require( 'lodash/uniq' ),
+	flatten = require( 'lodash/flatten' ),
 	filter = require( 'lodash/filter' );
 
 /**
@@ -21,19 +23,26 @@ var productsValues = require( 'lib/products-values' ),
 	formatProduct = productsValues.formatProduct,
 	isCustomDesign = productsValues.isCustomDesign,
 	isDependentProduct = productsValues.isDependentProduct,
+	isDomainMapping = productsValues.isDomainMapping,
 	isDomainProduct = productsValues.isDomainProduct,
 	isDomainRedemption = productsValues.isDomainRedemption,
 	isDomainRegistration = productsValues.isDomainRegistration,
 	isGoogleApps = productsValues.isGoogleApps,
 	isNoAds = productsValues.isNoAds,
 	isPlan = productsValues.isPlan,
+	isPremium = productsValues.isPremium,
 	isPrivateRegistration = productsValues.isPrivateRegistration,
 	isSiteRedirect = productsValues.isSiteRedirect,
 	isSpaceUpgrade = productsValues.isSpaceUpgrade,
 	isUnlimitedSpace = productsValues.isUnlimitedSpace,
 	isUnlimitedThemes = productsValues.isUnlimitedThemes,
 	isVideoPress = productsValues.isVideoPress,
-	sortProducts = require( 'lib/products-values/sort' );
+	isJetpackPlan = productsValues.isJetpackPlan,
+	isWordPressDomain = productsValues.isWordPressDomain,
+	sortProducts = require( 'lib/products-values/sort' ),
+	PLAN_PERSONAL = require( 'lib/plans/constants' ).PLAN_PERSONAL;
+
+import { PLAN_FREE } from 'lib/plans/constants';
 
 /**
  * Adds the specified item to a shopping cart.
@@ -90,6 +99,11 @@ function cartItemShouldReplaceCart( cartItem, cart ) {
 		return true;
 	}
 
+	if ( isJetpackPlan( cartItem ) ) {
+		// adding a jetpack bundle should replace the cart
+		return true;
+	}
+
 	return false;
 }
 
@@ -119,10 +133,11 @@ function remove( cartItemToRemove ) {
  *
  * @param {Object} cartItemToRemove - item as `CartItemValue` object
  * @param {Object} cart - cart as `CartValue` object
+ * @param {bool} domainsWithPlansOnly - Whether we should consider domains as dependents of products
  * @returns {Function} the function that removes the items from a shopping cart
  */
-function removeItemAndDependencies( cartItemToRemove, cart ) {
-	var dependencies = getDependentProducts( cartItemToRemove, cart ),
+function removeItemAndDependencies( cartItemToRemove, cart, domainsWithPlansOnly ) {
+	var dependencies = getDependentProducts( cartItemToRemove, cart, domainsWithPlansOnly ),
 		changes = dependencies.map( remove ).concat( remove( cartItemToRemove ) );
 
 	return flow.apply( null, changes );
@@ -133,12 +148,15 @@ function removeItemAndDependencies( cartItemToRemove, cart ) {
  *
  * @param {Object} cartItem - item as `CartItemValue` object
  * @param {Object} cart - cart as `CartValue` object
+ * @param {bool} domainsWithPlansOnly - Whether we should consider domains as dependents of products
  * @returns {Object[]} the list of dependency items in the shopping cart
  */
-function getDependentProducts( cartItem, cart ) {
-	return getAll( cart ).filter( function( existingCartItem ) {
-		return isDependentProduct( cartItem, existingCartItem );
+function getDependentProducts( cartItem, cart, domainsWithPlansOnly ) {
+	const dependentProducts = getAll( cart ).filter( function( existingCartItem ) {
+		return isDependentProduct( cartItem, existingCartItem, domainsWithPlansOnly );
 	} );
+
+	return uniq( flatten( dependentProducts.concat( dependentProducts.map( dependentProduct => getDependentProducts( dependentProduct, cart ) ) ) ) );
 }
 
 /**
@@ -148,7 +166,7 @@ function getDependentProducts( cartItem, cart ) {
  * @returns {Object[]} the list of items in the shopping cart as `CartItemValue` objects
  */
 function getAll( cart ) {
-	return cart.products;
+	return cart && cart.products || [];
 }
 
 /**
@@ -189,7 +207,11 @@ function hasFreeTrial( cart ) {
  * @returns {boolean} true if there is at least one plan, false otherwise
  */
 function hasPlan( cart ) {
-	return some( getAll( cart ), isPlan );
+	return cart && some( getAll( cart ), isPlan );
+}
+
+function hasPremiumPlan( cart ) {
+	return some( getAll( cart ), isPremium );
 }
 
 function hasDomainCredit( cart ) {
@@ -306,10 +328,26 @@ function hasRenewableSubscription( cart ) {
  * @returns {Object} the new item as `CartItemValue` object
  */
 function planItem( productSlug, isFreeTrial = false ) {
+	// Free plan doesn't have shopping cart.
+	if ( productSlug === PLAN_FREE ) {
+		return null;
+	}
+
 	return {
 		product_slug: productSlug,
 		free_trial: isFreeTrial
 	};
+}
+
+/**
+ * Creates a new shopping cart item for a Personal plan.
+ *
+ * @param {string} slug - e.g. value_bundle, jetpack_premium
+ * @param {Object} properties - list of properties
+ * @returns {Object} the new item as `CartItemValue` object
+ */
+function personalPlan( slug, properties ) {
+	return planItem( slug, properties.isFreeTrial );
 }
 
 /**
@@ -467,12 +505,16 @@ function getItemForPlan( plan, properties ) {
 	properties = properties || {};
 
 	switch ( plan.product_slug ) {
+		case PLAN_PERSONAL:
+			return personalPlan( plan.product_slug, properties );
 		case 'value_bundle':
 		case 'jetpack_premium':
+		case 'jetpack_premium_monthly':
 			return premiumPlan( plan.product_slug, properties );
 
 		case 'business-bundle':
 		case 'jetpack_business':
+		case 'jetpack_business_monthly':
 			return businessPlan( plan.product_slug, properties );
 
 		default:
@@ -669,9 +711,68 @@ function getIncludedDomain( cartItem ) {
 	return cartItem.extra && cartItem.extra.includedDomain;
 }
 
+function isNextDomainFree( cart ) {
+	return !! ( cart && cart.next_domain_is_free );
+}
+
+function isDomainBeingUsedForPlan( cart, domain ) {
+	if ( cart && domain && hasPlan( cart ) ) {
+		const domainProducts = getDomainRegistrations( cart ).concat( getDomainMappings( cart ) ),
+			domainProduct = ( domainProducts.shift() || {} );
+		return domain === domainProduct.meta;
+	}
+
+	return false;
+}
+
+function shouldBundleDomainWithPlan( withPlansOnly, selectedSite, cart, suggestionOrCartItem ) {
+	return withPlansOnly &&
+		// not free or a cart item
+		( isDomainRegistration( suggestionOrCartItem ) ||
+			isDomainMapping( suggestionOrCartItem ) ||
+			( suggestionOrCartItem.domain_name && ! isWordPressDomain( suggestionOrCartItem ) ) ) &&
+		( ! isDomainBeingUsedForPlan( cart, suggestionOrCartItem.domain_name ) ) && // a plan in cart
+		( ! isNextDomainFree( cart ) ) && // domain credit
+		( ! hasPlan( cart ) ) && // already a plan in cart
+		( ! selectedSite || ( selectedSite && selectedSite.plan.product_slug === 'free_plan' ) ); // site has a plan
+}
+
+function bundleItemWithPlan( cartItem, planSlug = 'value_bundle' ) {
+	return [ cartItem, planItem( planSlug, false ) ];
+}
+
+function bundleItemWithPlanIfNecessary( cartItem, withPlansOnly, selectedSite, cart, planSlug = 'value_bundle' ) {
+	if ( shouldBundleDomainWithPlan( withPlansOnly, selectedSite, cart, cartItem ) ) {
+		return bundleItemWithPlan( cartItem, planSlug );
+	}
+	return [ cartItem ];
+}
+
+function getDomainPriceRule( withPlansOnly, selectedSite, cart, suggestion ) {
+	if ( ! suggestion.product_slug || suggestion.cost === 'Free' ) {
+		return 'FREE_DOMAIN';
+	}
+
+	if ( isDomainBeingUsedForPlan( cart, suggestion.domain_name ) ) {
+		return 'FREE_WITH_PLAN';
+	}
+
+	if ( isNextDomainFree( cart ) ) {
+		return 'FREE_WITH_PLAN';
+	}
+
+	if ( shouldBundleDomainWithPlan( withPlansOnly, selectedSite, cart, suggestion ) ) {
+		return 'INCLUDED_IN_PREMIUM';
+	}
+
+	return 'PRICE';
+}
+
 module.exports = {
 	add,
 	addPrivacyToAllDomains,
+	bundleItemWithPlan,
+	bundleItemWithPlanIfNecessary,
 	businessPlan,
 	customDesignItem,
 	domainMapping,
@@ -682,6 +783,7 @@ module.exports = {
 	getAll,
 	getAllSorted,
 	getDomainMappings,
+	getDomainPriceRule,
 	getDomainRegistrations,
 	getDomainRegistrationsWithoutPrivacy,
 	getDomainRegistrationTld,
@@ -694,6 +796,8 @@ module.exports = {
 	getSiteRedirects,
 	googleApps,
 	googleAppsExtraLicenses,
+	isNextDomainFree,
+	isDomainBeingUsedForPlan,
 	hasDomainCredit,
 	hasDomainInCart,
 	hasDomainMapping,
@@ -704,6 +808,7 @@ module.exports = {
 	hasOnlyProductsOf,
 	hasOnlyRenewalItems,
 	hasPlan,
+	hasPremiumPlan,
 	hasProduct,
 	hasRenewableSubscription,
 	hasRenewalItem,
@@ -714,6 +819,7 @@ module.exports = {
 	removeItemAndDependencies,
 	removePrivacyFromAllDomains,
 	siteRedirect,
+	shouldBundleDomainWithPlan,
 	spaceUpgradeItem,
 	themeItem,
 	unlimitedSpaceItem,

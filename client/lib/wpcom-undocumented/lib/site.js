@@ -99,7 +99,7 @@ UndocumentedSite.prototype.domains = function( callback ) {
 };
 
 UndocumentedSite.prototype.postFormatsList = function( callback ) {
-	this.wpcom.req.get( '/sites/' + this._id + '/post-formats', { locale: i18n.getLocaleSlug() }, callback );
+	this.wpcom.withLocale().req.get( '/sites/' + this._id + '/post-formats', {}, callback );
 };
 
 UndocumentedSite.prototype.postAutosave = function( postId, attributes, callback ) {
@@ -122,8 +122,8 @@ UndocumentedSite.prototype.shortcodes = function( attributes, callback ) {
 	this.wpcom.req.get( '/sites/' + this._id + '/shortcodes/render', attributes, callback );
 };
 
-UndocumentedSite.prototype.getRoles = function( query, callback ) {
-	this.wpcom.req.get( '/sites/' + this._id + '/roles', query, callback );
+UndocumentedSite.prototype.getRoles = function( callback ) {
+	this.wpcom.withLocale().req.get( '/sites/' + this._id + '/roles', {}, callback );
 };
 
 UndocumentedSite.prototype.getViewers = function( query, callback ) {
@@ -155,7 +155,7 @@ UndocumentedSite.prototype.getUser = function( login, callback ) {
 };
 
 UndocumentedSite.prototype.removeFollower = function( followerId, callback ) {
-	this.wpcom.req.post( {
+	return this.wpcom.req.post( {
 		path: '/sites/' + this._id + '/followers/' + followerId + '/delete'
 	}, callback );
 };
@@ -164,10 +164,6 @@ UndocumentedSite.prototype.removeEmailFollower = function( followerId, callback 
 	this.wpcom.req.post( {
 		path: '/sites/' + this._id + '/email-followers/' + followerId + '/delete'
 	}, callback );
-};
-
-UndocumentedSite.prototype.getMuseCustomizations = function( callback ) {
-	this.wpcom.req.get( '/sites/' + this._id + '/customizations', callback );
 };
 
 UndocumentedSite.prototype.setOption = function( query, callback ) {

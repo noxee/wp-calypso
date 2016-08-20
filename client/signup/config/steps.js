@@ -2,14 +2,22 @@
  * External dependencies
  */
 import { current } from 'page';
+import i18n from 'i18n-calypso';
 
 /**
 * Internal dependencies
 */
 import stepActions from 'lib/signup/step-actions';
-import i18n from 'lib/mixins/i18n';
 
 module.exports = {
+	survey: {
+		stepName: 'survey',
+		props: {
+			surveySiteType: ( current && current.toString().match( /\/start\/(blog|delta-blog)/ ) ) ? 'blog' : 'site'
+		},
+		providesDependencies: [ 'surveySiteType', 'surveyQuestion' ]
+	},
+
 	themes: {
 		stepName: 'themes',
 		dependencies: [ 'siteSlug' ],
@@ -18,7 +26,12 @@ module.exports = {
 
 	'design-type': {
 		stepName: 'design-type',
-		providesDependencies: [ 'themes' ]
+		providesDependencies: [ 'designType' ]
+	},
+
+	'design-type-with-store': {
+		stepName: 'design-type-with-store',
+		providesDependencies: [ 'designType' ]
 	},
 
 	site: {
@@ -34,24 +47,16 @@ module.exports = {
 		providesDependencies: [ 'bearer_token', 'username' ]
 	},
 
-	test: {
-		stepName: 'test'
-	},
-
-	survey: {
-		stepName: 'survey',
-		props: {
-			surveySiteType: ( current && current.toString().match( /\/start\/(blog|delta-blog)/ ) ) ? 'blog' : 'site'
-		},
-		providesDependencies: [ 'surveySiteType', 'surveyQuestion' ]
-	},
-
 	'survey-user': {
 		stepName: 'survey-user',
 		apiRequestFunction: stepActions.createAccount,
 		providesToken: true,
 		dependencies: [ 'surveySiteType', 'surveyQuestion' ],
 		providesDependencies: [ 'bearer_token', 'username' ]
+	},
+
+	test: {
+		stepName: 'test'
 	},
 
 	plans: {

@@ -2,6 +2,7 @@
  * External dependencies
  */
 import React from 'react';
+import { connect } from 'react-redux';
 
 /**
  * Internal dependencies
@@ -12,20 +13,22 @@ import {
 	isCredits,
 	isDomainProduct,
 	isGoogleApps,
-	isTheme
+	isTheme,
+	isMonthly,
+	isPlan
 } from 'lib/products-values';
+import { currentUserHasFlag } from 'state/current-user/selectors';
+import { DOMAINS_WITH_PLANS_ONLY } from 'state/current-user/constants';
 import * as upgradesActions from 'lib/upgrades/actions';
-import config from 'config';
 
 const getIncludedDomain = cartItems.getIncludedDomain;
 
-export default React.createClass( {
-	displayName: 'CartItem',
+const CartItem = React.createClass( {
 
 	removeFromCart: function( event ) {
 		event.preventDefault();
 		analytics.ga.recordEvent( 'Upgrades', 'Clicked Remove From Cart Icon', 'Product ID', this.props.cartItem.product_id );
-		upgradesActions.removeItem( this.props.cartItem );
+		upgradesActions.removeItem( this.props.cartItem, this.props.domainsWithPlansOnly );
 	},
 
 	price: function() {
@@ -57,13 +60,26 @@ export default React.createClass( {
 
 	monthlyPrice: function() {
 		const { cost, currency } = this.props.cartItem;
-		if ( ! config.isEnabled( 'monthly-plan-pricing' ) || cost === 0 ) {
+
+		if ( typeof cost === 'undefined' ) {
+			return null;
+		}
+
+		if ( ! isPlan( this.props.cartItem ) ) {
+			return null;
+		}
+
+		if ( cost <= 0 ) {
+			return null;
+		}
+
+		if ( isMonthly( this.props.cartItem ) ) {
 			return null;
 		}
 
 		return this.translate( '(%(monthlyPrice)f %(currency)s x 12 months)', {
 			args: {
-				monthlyPrice: +( cost / 12 ).toFixed( 2 ),
+				monthlyPrice: +( cost / 12 ).toFixed( currency === 'JPY' ? 0 : 2 ),
 				currency
 			}
 		} );
@@ -93,7 +109,7 @@ export default React.createClass( {
 		if ( isGoogleApps( this.props.cartItem ) && this.props.cartItem.extra.google_apps_users ) {
 			info = this.props.cartItem.extra.google_apps_users.map( user => <div>{ user.email }</div> );
 		} else if ( isCredits( this.props.cartItem ) ) {
-			info = null
+			info = null;
 		} else if ( getIncludedDomain( this.props.cartItem ) ) {
 			info = getIncludedDomain( this.props.cartItem );
 		} else if ( isTheme( this.props.cartItem ) ) {
@@ -107,7 +123,11 @@ export default React.createClass( {
 	render: function() {
 		var name = this.getProductName();
 		if ( this.props.cartItem.bill_period && this.props.cartItem.bill_period !== -1 ) {
-			name += ' - ' + this.translate( 'annual subscription' );
+			if ( isMonthly( this.props.cartItem ) ) {
+				name += ' - ' + this.translate( 'monthly subscription' );
+			} else {
+				name += ' - ' + this.translate( 'annual subscription' );
+			}
 		}
 
 		return (
@@ -180,3 +200,5 @@ export default React.createClass( {
 		}
 	}
 } );
+
+export default connect( state => ( { domainsWithPlansOnly: currentUserHasFlag( state, DOMAINS_WITH_PLANS_ONLY ) } ) )( CartItem );

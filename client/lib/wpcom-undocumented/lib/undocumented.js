@@ -8,7 +8,8 @@ var debug = require( 'debug' )( 'calypso:wpcom-undocumented:undocumented' ),
 	camelCase = require( 'lodash/camelCase' ),
 	snakeCase = require( 'lodash/snakeCase' ),
 	pick = require( 'lodash/pick' ),
-	url = require( 'url' );
+	url = require( 'url' ),
+	reject = require( 'lodash/reject' );
 
 /**
  * Internal dependencies.
@@ -186,6 +187,53 @@ Undocumented.prototype.jetpackAuthorize = function( siteId, code, state, redirec
 	return this.wpcom.req.post( { path: endpointUrl }, params );
 };
 
+Undocumented.prototype.jetpackValidateSSONonce = function( siteId, ssoNonce, fn ) {
+	debug( '/jetpack-blogs/:site_id:/sso-validate query' );
+	const endpointUrl = '/jetpack-blogs/' + siteId + '/sso-validate';
+	const params = { sso_nonce: ssoNonce };
+	return this.wpcom.req.post( { path: endpointUrl }, params, fn );
+};
+
+Undocumented.prototype.jetpackAuthorizeSSONonce = function( siteId, ssoNonce, fn ) {
+	debug( '/jetpack-blogs/:site_id:/sso-authorize query' );
+	const endpointUrl = '/jetpack-blogs/' + siteId + '/sso-authorize';
+	const params = { sso_nonce: ssoNonce };
+	return this.wpcom.req.post( { path: endpointUrl }, params, fn );
+};
+
+/**
+ * Gets the current status of a full sync for a Jetpack site.
+ *
+ * @param {int|string} siteId The site ID
+ * @param {Function} fn The callback function
+ * @api public
+ */
+Undocumented.prototype.getJetpackSyncStatus = function( siteId, fn ) {
+	debug( '/sites/:site_id:/sync/status query' );
+	const endpointPath = '/sites/' + siteId + '/sync/status';
+	return this.wpcom.req.get( { path: endpointPath }, fn );
+};
+
+/**
+ * Schedules a full sync for a Jetpack site.
+ *
+ * @param {int|string} siteId The site ID
+ * @param {Function} fn The callback function
+ * @api public
+ */
+Undocumented.prototype.scheduleJetpackFullysync = function( siteId, fn ) {
+	debug( '/sites/:site_id:/sync query' );
+	const endpointPath = '/sites/' + siteId + '/sync';
+	return this.wpcom.req.post( { path: endpointPath }, {}, fn );
+};
+
+Undocumented.prototype.activateManage = function( siteId, state, secret ) {
+	debug( '/jetpack-blogs/:site_id:/activate-manage query' );
+	const endpointUrl = '/jetpack-blogs/' + siteId + '/activate-manage';
+	const params = { state, secret };
+	return this.wpcom.req.post( { path: endpointUrl }, params );
+};
+
 Undocumented.prototype.invitesList = function( siteId, number, offset, fn ) {
 	debug( '/sites/:site_id:/invites query' );
 	this.wpcom.req.get( '/sites/' + siteId + '/invites', {
@@ -255,10 +303,10 @@ Undocumented.prototype._sendRequestWithLocale = function( originalParams, fn ) {
 
 	if ( apiVersion ) {
 		// TODO: temporary solution for apiVersion until https://github.com/Automattic/wpcom.js/issues/152 is resolved
-		this.wpcom.req[ method.toLowerCase() ]( updatedParams, { apiVersion }, fn );
-	} else {
-		this.wpcom.req[ method.toLowerCase() ]( updatedParams, fn );
+		return this.wpcom.req[ method.toLowerCase() ]( updatedParams, { apiVersion }, fn );
 	}
+
+	return this.wpcom.req[ method.toLowerCase() ]( updatedParams, fn );
 };
 
 /**
@@ -436,35 +484,6 @@ Undocumented.prototype.validateDomainContactInformation = function( contactInfor
 };
 
 /**
- * Get a list of active WordPress.com plans
- *
- * @param {Function} fn The callback function
- * @api public
- */
-Undocumented.prototype.getPlans = function( fn ) {
-	debug( '/plans query' );
-	this._sendRequestWithLocale( {
-		path: '/plans',
-		method: 'get',
-		apiVersion: '1.2'
-	}, fn );
-};
-
-/**
- * Get a list of features for active WordPress.com plans
- *
- * @param {Function} fn The callback function
- * @api public
- */
-Undocumented.prototype.getPlansFeatures = function( fn ) {
-	debug( '/plans/features query' );
-	this._sendRequestWithLocale( {
-		path: '/plans/features',
-		method: 'get'
-	}, fn );
-};
-
-/**
  * Get a list of WordPress.com products
  *
  * @param {Function} fn The callback function
@@ -472,7 +491,7 @@ Undocumented.prototype.getPlansFeatures = function( fn ) {
  */
 Undocumented.prototype.getProducts = function( fn ) {
 	debug( '/products query' );
-	this._sendRequestWithLocale( {
+	return this._sendRequestWithLocale( {
 		path: '/products',
 		method: 'get'
 	}, fn );
@@ -882,31 +901,6 @@ Undocumented.prototype.paypalExpressUrl = function( data, fn ) {
 };
 
 /**
- * GET domain suggestions
- *
- * @param {int|string} searchQuery The domain name to search
- * @param {object} functionParams Parameters for the endpoint
- * @param {Function} fn The callback function
- * @api public
- */
-Undocumented.prototype.fetchDomainSuggestions = function( searchQuery, functionParams, fn ) {
-	var query = {
-		query: searchQuery,
-		quantity: functionParams.quantity,
-		include_wordpressdotcom: functionParams.includeWordPressDotCom,
-		vendor: functionParams.vendor,
-	};
-
-	this.wpcom.req.get( '/domains/suggestions', query, function( error, response ) {
-		if ( error ) {
-			return fn( error );
-		}
-
-		fn( null, response );
-	} );
-};
-
-/**
  * GET example domain suggestions
  *
  * @param {Function} fn - The callback funtion
@@ -935,6 +929,32 @@ Undocumented.prototype.setPrimaryDomain = function( siteId, domain, fn ) {
 	this.wpcom.req.post( '/sites/' + siteId + '/domains/primary', {}, { domain: domain }, fn );
 };
 
+/**
+ * Fetch preview markup for a site
+ *
+ * @param {int} siteId The site ID
+ * @param {string} path Optional. The site path to preview
+ * @param {object} postData Optional. The customization data to send
+ * @return {Promise} A Promise to resolve when complete
+ */
+Undocumented.prototype.fetchPreviewMarkup = function( siteId, path, postData ) {
+	debug( '/sites/:site_id/previews/mine' );
+	return new Promise( ( resolve, reject ) => {
+		const endpoint = `/sites/${siteId}/previews/mine`;
+		const query = { path };
+		const isPreviewCustomized = ( postData && Object.keys( postData ).length > 0 );
+		const request = isPreviewCustomized ? this.wpcom.req.post( endpoint, query, { customized: postData } ) : this.wpcom.req.get( endpoint, query );
+		request
+			.then( response => {
+				if ( ! response.html ) {
+					return reject( new Error( 'No markup received from API' ) );
+				}
+				resolve( response.html );
+			} )
+			.catch( reject );
+	} );
+};
+
 Undocumented.prototype.readFollowing = function( query, fn ) {
 	debug( '/read/following' );
 	query.apiVersion = '1.3';
@@ -956,7 +976,7 @@ Undocumented.prototype.readA8C = function( query, fn ) {
 Undocumented.prototype.readFeed = function( query, fn ) {
 	var params = omit( query, 'ID' );
 	debug( '/read/feed' );
-	this.wpcom.req.get( '/read/feed/' + encodeURIComponent( query.ID ), params, fn );
+	return this.wpcom.req.get( '/read/feed/' + encodeURIComponent( query.ID ), params, fn );
 };
 
 Undocumented.prototype.discoverFeed = function( query, fn ) {
@@ -977,7 +997,7 @@ Undocumented.prototype.readFeedPost = function( query, fn ) {
 	debug( '/read/feed/' + query.feedId + '/posts/' + query.postId );
 	params.apiVersion = '1.3';
 
-	this.wpcom.req.get( '/read/feed/' + encodeURIComponent( query.feedId ) + '/posts/' + encodeURIComponent( query.postId ), params, fn );
+	return this.wpcom.req.get( '/read/feed/' + encodeURIComponent( query.feedId ) + '/posts/' + encodeURIComponent( query.postId ), params, fn );
 };
 
 Undocumented.prototype.readSearch = function( query, fn ) {
@@ -1000,8 +1020,19 @@ Undocumented.prototype.readTags = function( fn ) {
 Undocumented.prototype.readTagPosts = function( query, fn ) {
 	var params = omit( query, 'tag' );
 	debug( '/read/tags/' + query.tag + '/posts' );
-	params.apiVersion = '1.2';
+	if ( config.isEnabled( 'reader/tags-with-elasticsearch' ) ) {
+		params.apiVersion = '1.3';
+	} else {
+		params.apiVersion = '1.2';
+	}
+
 	this.wpcom.req.get( '/read/tags/' + encodeURIComponent( query.tag ) + '/posts', params, fn );
+};
+
+Undocumented.prototype.readRecommendedPosts = function( query, fn ) {
+	debug( '/recommendations/posts' );
+	query.apiVersion = '1.2';
+	this.wpcom.req.get( '/read/recommendations/posts', query, fn );
 };
 
 Undocumented.prototype.followReaderTag = function( tag, fn ) {
@@ -1108,32 +1139,45 @@ Undocumented.prototype.readTeams = function( fn ) {
 Undocumented.prototype.readSite = function( query, fn ) {
 	var params = omit( query, 'site' );
 	debug( '/read/sites/:site' );
-	query.apiVersion = '1.1';
-	this.wpcom.req.get( '/read/sites/' + query.site, params, fn );
+	return this.wpcom.req.get( '/read/sites/' + query.site, params, fn );
 };
 
 Undocumented.prototype.readSiteFeatured = function( siteId, query, fn ) {
 	var params = omit( query, [ 'before', 'after' ] );
 	debug( '/read/sites/:site/featured' );
-	this.wpcom.req.get( '/read/sites/' + siteId + '/featured', params, fn );
+	return this.wpcom.req.get( '/read/sites/' + siteId + '/featured', params, fn );
 };
 
 Undocumented.prototype.readSitePosts = function( query, fn ) {
 	var params = omit( query, 'site' );
 	debug( '/read/sites/:site/posts' );
-	query.apiVersion = '1.1';
-	this.wpcom.req.get( '/read/sites/' + query.site + '/posts', params, fn );
+	return this.wpcom.req.get( '/read/sites/' + query.site + '/posts', params, fn );
 };
 
 Undocumented.prototype.readSitePost = function( query, fn ) {
 	var params = omit( query, [ 'site', 'postId' ] );
 	debug( '/read/sites/:site/post/:post' );
-	query.apiVersion = '1.1';
-	this.wpcom.req.get( '/read/sites/' + query.site + '/posts/' + query.postId, params, fn );
+	return this.wpcom.req.get( '/read/sites/' + query.site + '/posts/' + query.postId, params, fn );
+};
+
+Undocumented.prototype.readSitePostRelated = function( query, fn ) {
+	debug( '/read/site/:site/post/:post/related' );
+	const params = omit( query, [ 'site_id', 'post_id' ] );
+	params.apiVersion = '1.2';
+	return this.wpcom.req.get( '/read/site/' + query.site_id + '/post/' + query.post_id + '/related', params, fn );
 };
 
 Undocumented.prototype.fetchSiteRecommendations = function( query, fn ) {
 	this.wpcom.req.get( '/read/recommendations/mine', query, fn );
+};
+
+Undocumented.prototype.readRecommendationsStart = function( query, fn ) {
+	return this.wpcom.req.get( '/read/recommendations/start', query, fn );
+};
+
+Undocumented.prototype.graduateNewReader = function( fn ) {
+	const params = { apiVersion: '1.2' };
+	return this.wpcom.req.post( '/read/graduate-new-reader', params, {}, fn );
 };
 
 Undocumented.prototype.readNewPostEmailSubscription = function( query, fn ) {
@@ -1385,18 +1429,19 @@ Undocumented.prototype.themes = function( site, query, fn ) {
 	return this.wpcom.req.get( path, {
 		search: query.search,
 		tier: query.tier,
+		filter: query.filter,
 		page: query.page,
 		number: query.perPage,
 		apiVersion: site.jetpack ? '1' : '1.2'
 	}, fn );
 };
 
-Undocumented.prototype.themeDetails = function( themeId, fn ) {
-	const path = `/themes/${ themeId }`;
-	debug( '/themes/:theme_id' );
+Undocumented.prototype.themeDetails = function( themeId, site, fn ) {
+	const sitePath = site ? `/sites/${ site }` : '';
+	const path = `${ sitePath }/themes/${ themeId }`;
+	debug( path );
 	return this.wpcom.req.get( path, {
-		apiVersion: '1.1',
-		extended: 'true',
+		apiVersion: '1.2',
 	}, fn );
 };
 
@@ -1490,12 +1535,11 @@ Undocumented.prototype.fetchDns = function( domainName, fn ) {
 	this.wpcom.req.get( '/domains/' + domainName + '/dns', fn );
 };
 
-Undocumented.prototype.addDns = function( domain, record, fn ) {
-	this.wpcom.req.post( '/domains/' + domain + '/dns/add', {}, record, fn );
-};
+Undocumented.prototype.updateDns = function( domain, records, fn ) {
+	var filtered = reject( records, 'isBeingDeleted' ),
+		body = { dns: JSON.stringify( filtered ) };
 
-Undocumented.prototype.deleteDns = function( domain, record, fn ) {
-	this.wpcom.req.post( '/domains/' + domain + '/dns/delete', {}, record, fn );
+	this.wpcom.req.post( '/domains/' + domain + '/dns', body, fn );
 };
 
 Undocumented.prototype.fetchWapiDomainInfo = function( domainName, fn ) {
@@ -1580,6 +1624,24 @@ Undocumented.prototype.updateWhois = function( domainName, whois, fn ) {
 		apiVersion: '1.1',
 		body: {
 			whois: whois
+		}
+	}, fn );
+};
+
+/**
+ * Add domain mapping for VIP clients.
+ *
+ * @param {int} [siteId] The site ID
+ * @param {string} [domainName] Name of the domain mapping
+ * @param {Function} fn The callback function
+ * @returns {Promise} A promise that resolves when the request completes
+ */
+Undocumented.prototype.addVipDomainMapping = function( siteId, domainName, fn ) {
+	debug( '/site/:site_id/vip-domain-mapping' );
+	return this.wpcom.req.post( {
+		path: `/sites/${ siteId }/vip-domain-mapping`,
+		body: {
+			domain: domainName
 		}
 	}, fn );
 };
@@ -1753,7 +1815,7 @@ Undocumented.prototype.submitSupportForumsTopic = function( subject, message, cl
  * @api public
  */
 Undocumented.prototype.getExportSettings = function( siteId, fn ) {
-	return this.wpcom.req.get( {
+	return this.wpcom.withLocale().req.get( {
 		apiVersion: '1.1',
 		path: `/sites/${ siteId }/exports/settings`
 	}, fn );
@@ -1768,7 +1830,7 @@ Undocumented.prototype.getExportSettings = function( siteId, fn ) {
  * @returns {Promise}                   A promise that resolves when the export started
  */
 Undocumented.prototype.startExport = function( siteId, advancedSettings, fn ) {
-	return this.wpcom.req.post( {
+	return this.wpcom.withLocale().req.post( {
 		apiVersion: '1.1',
 		path: `/sites/${ siteId }/exports/start`
 	}, advancedSettings, fn );
@@ -1783,7 +1845,7 @@ Undocumented.prototype.startExport = function( siteId, advancedSettings, fn ) {
  * @returns {Promise}  promise
  */
 Undocumented.prototype.getExport = function( siteId, exportId, fn ) {
-	return this.wpcom.req.get( {
+	return this.wpcom.withLocale().req.get( {
 		apiVersion: '1.1',
 		path: `/sites/${ siteId }/exports/${ exportId }`
 	}, fn );
@@ -1808,14 +1870,14 @@ Undocumented.prototype.timezones = function( params, fn ) {
  */
 Undocumented.prototype.getSiteConnectInfo = function( targetUrl, filters ) {
 	const parsedUrl = url.parse( targetUrl );
-	const endpointUrl = `/connect/site-info/${ parsedUrl.protocol.slice( 0, -1 ) }/${ parsedUrl.host }`;
+	let endpointUrl = `/connect/site-info/${ parsedUrl.protocol.slice( 0, -1 ) }/${ parsedUrl.host }`;
 	let params = {
 		filters: filters,
 		apiVersion: '1.1',
 	};
 
 	if ( parsedUrl.path && parsedUrl.path !== '/' ) {
-		params.path = parsedUrl.path;
+		endpointUrl += parsedUrl.path.replace( /\//g, '::' );
 	}
 
 	return this.wpcom.req.get( `${ endpointUrl }`, params );
@@ -1872,6 +1934,60 @@ Undocumented.prototype.importReaderFeed = function( file, fn ) {
 		apiVersion: '1.2',
 	};
 	return this.wpcom.req.post( params, query, null, fn );
+};
+
+/**
+ * Creates a Push Notification registration for the device
+ *
+ * @param {String}     registration   The registration to be stored
+ * @param {String}     deviceFamily   The device family
+ * @param {String}     deviceName     The device name
+ * @param {Function}   fn             The callback function
+ * @returns {XMLHttpRequest}          The XHR instance
+ */
+Undocumented.prototype.registerDevice = function( registration, deviceFamily, deviceName, fn ) {
+	debug( '/devices/new' );
+	return this.wpcom.req.post( { path: '/devices/new' }, {}, {
+		device_token: registration,
+		device_family: deviceFamily,
+		device_name: deviceName
+	}, fn );
+};
+
+/**
+ * Removes a Push Notification registration for the device
+ *
+ * @param {int}        deviceId       The device ID for the registration to be removed
+ * @param {Function}   fn             The callback function
+ * @returns {XMLHttpRequest}          The XHR instance
+ */
+Undocumented.prototype.unregisterDevice = function( deviceId, fn ) {
+	debug( '/devices/:device_id/delete' );
+	return this.wpcom.req.post( { path: `/devices/${ deviceId }/delete` }, fn );
+};
+
+/**
+ * Requests streamlined approval to WordAds program
+ *
+ * @param {int}       siteId            The site ID
+ * @returns {XMLHttpRequest}          The XHR instance
+ */
+Undocumented.prototype.wordAdsApprove = function( siteId ) {
+	debug( '/sites/:site:/wordads/approve' );
+	return this.wpcom.req.post( '/sites/' + siteId + '/wordads/approve' );
+};
+
+/**
+ * Requests the status of a guided transfer
+ *
+ * @param {int} siteId  The site ID
+ * @returns {Promise} Resolves to the response containing the transfer status
+ */
+Undocumented.prototype.getGuidedTransferStatus = function( siteId ) {
+	debug( '/sites/:site:/transfer' );
+	return this.wpcom.req.get( '/sites/' + siteId + '/transfer', {
+		apiNamespace: 'wpcom/v2'
+	} );
 };
 
 /**

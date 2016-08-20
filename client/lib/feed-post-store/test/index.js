@@ -92,7 +92,6 @@ describe( 'feed-post-store', function() {
 			feedId: 1,
 			postId: 2
 		} ) ).to.be.ok;
-		// dependant on the widow rules to be present
 		expect( FeedPostStore.get( {
 			feedId: 1,
 			postId: 2

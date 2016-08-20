@@ -1,6 +1,7 @@
 /**
  * External Dependencies
  */
+import { connect } from 'react-redux';
 import page from 'page';
 import React from 'react';
 
@@ -9,21 +10,31 @@ import React from 'react';
  */
 import Card from 'components/card';
 import CancelPurchaseButton from './button';
+import CancelPurchaseLoadingPlaceholder from 'me/purchases/cancel-purchase/loading-placeholder';
 import CancelPurchaseRefundInformation from './refund-information';
 import CompactCard from 'components/card/compact';
 import { getName, isCancelable, isOneTimePurchase, isRefundable, isSubscription } from 'lib/purchases';
 import { getPurchase, getSelectedSite, goToManagePurchase, recordPageView } from 'me/purchases/utils';
+import { getByPurchaseId, hasLoadedUserPurchasesFromServer } from 'state/purchases/selectors';
+import { getSelectedSite as getSelectedSiteSelector } from 'state/ui/selectors';
 import HeaderCake from 'components/header-cake';
+import { isDataLoading } from 'me/purchases/utils';
 import { isDomainRegistration } from 'lib/products-values';
+import { isRequestingSites } from 'state/sites/selectors';
 import Main from 'components/main';
 import paths from '../paths';
+import QueryUserPurchases from 'components/data/query-user-purchases';
 import ProductLink from 'me/purchases/product-link';
-import support from 'lib/url/support';
 import titles from 'me/purchases/titles';
+import userFactory from 'lib/user';
+
+const user = userFactory();
 
 const CancelPurchase = React.createClass( {
 	propTypes: {
-		selectedPurchase: React.PropTypes.object.isRequired,
+		hasLoadedSites: React.PropTypes.bool.isRequired,
+		hasLoadedUserPurchasesFromServer: React.PropTypes.bool.isRequired,
+		selectedPurchase: React.PropTypes.object,
 		selectedSite: React.PropTypes.oneOfType( [
 			React.PropTypes.bool,
 			React.PropTypes.object
@@ -49,10 +60,14 @@ const CancelPurchase = React.createClass( {
 	},
 
 	isDataValid( props = this.props ) {
+		if ( isDataLoading( props ) ) {
+			return true;
+		}
+
 		const purchase = getPurchase( props ),
 			selectedSite = getSelectedSite( props );
 
-		return ( selectedSite && purchase && isCancelable( purchase ) );
+		return selectedSite && purchase && isCancelable( purchase );
 	},
 
 	redirect( props ) {
@@ -96,6 +111,18 @@ const CancelPurchase = React.createClass( {
 			return null;
 		}
 
+		if ( isDataLoading( this.props ) ) {
+			return (
+				<div>
+					<QueryUserPurchases userId={ user.get().ID } />
+					<CancelPurchaseLoadingPlaceholder
+						purchaseId={ this.props.purchaseId }
+						selectedSite={ this.props.selectedSite }
+					/>
+				</div>
+			);
+		}
+
 		const purchase = getPurchase( this.props ),
 			purchaseName = getName( purchase ),
 			{ siteName, domain: siteDomain } = purchase;
@@ -125,17 +152,7 @@ const CancelPurchase = React.createClass( {
 						{ heading }
 					</h2>
 
-					<div className="cancel-purchase__info">
-						<CancelPurchaseRefundInformation purchase={ purchase } />
-
-						<strong className="cancel-purchase__support-information">
-							{ this.translate( 'Have a question? {{contactLink}}Ask a Happiness Engineer!{{/contactLink}}', {
-								components: {
-									contactLink: <a href={ support.CALYPSO_CONTACT } />
-								}
-							} ) }
-						</strong>
-					</div>
+					<CancelPurchaseRefundInformation purchase={ purchase } />
 				</Card>
 
 				<CompactCard className="cancel-purchase__product-information">
@@ -158,4 +175,11 @@ const CancelPurchase = React.createClass( {
 	}
 } );
 
-export default CancelPurchase;
+export default connect(
+	( state, props ) => ( {
+		hasLoadedSites: ! isRequestingSites( state ),
+		hasLoadedUserPurchasesFromServer: hasLoadedUserPurchasesFromServer( state ),
+		selectedPurchase: getByPurchaseId( state, props.purchaseId ),
+		selectedSite: getSelectedSiteSelector( state )
+	} )
+)( CancelPurchase );

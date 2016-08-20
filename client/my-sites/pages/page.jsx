@@ -3,6 +3,7 @@
  */
 var React = require( 'react' ),
 	ReactCSSTransitionGroup = require( 'react-addons-css-transition-group' ),
+	i18n = require( 'i18n-calypso' ),
 	page = require( 'page' );
 
 /**
@@ -15,9 +16,9 @@ var updatePostStatus = require( 'lib/mixins/update-post-status' ),
 	PopoverMenuItem = require( 'components/popover/menu-item' ),
 	SiteIcon = require( 'components/site-icon' ),
 	helpers = require( './helpers' ),
-	i18n = require( 'lib/mixins/i18n' ),
 	analytics = require( 'lib/analytics' ),
-	utils = require( 'lib/posts/utils' );
+	utils = require( 'lib/posts/utils' ),
+	classNames = require( 'classnames' );
 
 function recordEvent( eventAction ) {
 	analytics.ga.recordEvent( 'Pages', eventAction );
@@ -285,7 +286,14 @@ module.exports = React.createClass( {
 					{ title }
 				</a>
 				{ this.props.multisite ? <span className="page__site-url">{ this.getSiteDomain() }</span> : null }
-				<span className="page__actions-toggle noticon noticon-ellipsis" onClick={ this.togglePageActions } ref="popoverMenuButton" />
+				<Gridicon
+					icon="ellipsis"
+					className={ classNames( {
+						'page__actions-toggle': true,
+						'is-active': this.state.showPageActions
+					} ) }
+					onClick={ this.togglePageActions }
+					ref="popoverMenuButton" />
 				<PopoverMenu
 					isVisible={ this.state.showPageActions }
 					onClose={ this.togglePageActions }

@@ -25,7 +25,9 @@ module.exports = {
 			let newCart = data;
 
 			forEach( newCartItems, function( cartItem ) {
-				cartItem.extra = Object.assign( cartItem.extra || {}, { context: 'signup' } );
+				cartItem.extra = Object.assign( cartItem.extra || {}, {
+					context: 'signup'
+				} );
 				const addFunction = cartItems.add( cartItem );
 
 				newCart = cartValues.fillInAllCartItemAttributes( addFunction( newCart ), productsList.get() );

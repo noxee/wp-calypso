@@ -7,59 +7,91 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 /**
  * Internal dependencies
  */
+import noticesMiddleware from './notices/middleware';
+import postsEditMiddleware from './posts/middleware';
 import application from './application/reducer';
+import comments from './comments/reducer';
+import componentsUsageStats from './components-usage-stats/reducer';
+import currentUser from './current-user/reducer';
+import documentHead from './document-head/reducer';
+import domains from './domains/reducer';
+import googleAppsUsers from './google-apps-users/reducer';
 import jetpackConnect from './jetpack-connect/reducer';
-import page from './page/reducer';
+import jetpackSync from './jetpack-sync/reducer';
 import notices from './notices/reducer';
+import pageTemplates from './page-templates/reducer';
+import plans from './plans/reducer';
+import plugins from './plugins/reducer';
 import posts from './posts/reducer';
 import postTypes from './post-types/reducer';
-import plugins from './plugins/reducer';
+import preferences from './preferences/reducer';
+import preview from './preview/reducer';
+import productsList from './products-list/reducer';
+import pushNotifications from './push-notifications/reducer';
+import purchases from './purchases/reducer';
+import reader from './reader/reducer';
 import receipts from './receipts/reducer';
 import sharing from './sharing/reducer';
+import signup from './signup/reducer';
 import sites from './sites/reducer';
 import siteSettings from './site-settings/reducer';
+import stats from './stats/reducer';
+import storedCards from './stored-cards/reducer';
 import support from './support/reducer';
+import terms from './terms/reducer';
 import themes from './themes/reducer';
-import users from './users/reducer';
-import currentUser from './current-user/reducer';
 import ui from './ui/reducer';
-import comments from './comments/reducer';
-import googleAppsUsers from './google-apps-users/reducer';
-import reader from './reader/reducer';
+import users from './users/reducer';
+import wordads from './wordads/reducer';
 
 /**
  * Module variables
  */
 export const reducer = combineReducers( {
-	jetpackConnect,
-	plugins,
 	application,
-	page,
+	comments,
+	componentsUsageStats,
+	currentUser,
+	documentHead,
+	domains,
+	googleAppsUsers,
+	jetpackConnect,
+	jetpackSync,
 	notices,
+	pageTemplates,
+	plugins,
+	plans,
+	preferences,
+	preview,
 	posts,
 	postTypes,
+	productsList,
+	purchases,
+	pushNotifications,
+	reader,
 	receipts,
 	sharing,
+	signup,
 	sites,
 	siteSettings,
+	stats,
+	storedCards,
 	support,
+	terms,
 	themes,
-	users,
-	currentUser,
 	ui,
-	comments,
-	googleAppsUsers,
-	reader
+	users,
+	wordads
 } );
 
-let middleware = [ thunkMiddleware ];
+const middleware = [ thunkMiddleware, noticesMiddleware, postsEditMiddleware ];
 
-// Analytics middleware currently only works in the browser
 if ( typeof window === 'object' ) {
-	middleware = [
-		...middleware,
+	// Browser-specific middlewares
+	middleware.push(
+		require( './document-head/middleware' ),
 		require( './analytics/middleware.js' ).analyticsMiddleware
-	];
+	);
 }
 
 let createStoreWithMiddleware = applyMiddleware.apply( null, middleware );

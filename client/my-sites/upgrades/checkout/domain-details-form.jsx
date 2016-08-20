@@ -21,7 +21,6 @@ import analytics from 'lib/analytics';
 import formState from 'lib/form-state';
 import { addPrivacyToAllDomains, removePrivacyFromAllDomains, setDomainDetails } from 'lib/upgrades/actions';
 import FormButton from 'components/forms/form-button';
-import { abtest } from 'lib/abtest';
 
 // Cannot convert to ES6 import
 const wpcom = require( 'lib/wp' ).undocumented(),
@@ -49,7 +48,8 @@ export default React.createClass( {
 	getInitialState() {
 		return {
 			form: null,
-			isDialogVisible: false
+			isDialogVisible: false,
+			submissionCount: 0
 		};
 	},
 
@@ -57,7 +57,7 @@ export default React.createClass( {
 		this.formStateController = formState.Controller( {
 			fieldNames: this.fieldNames,
 			loadFunction: wpcom.getDomainContactInformation.bind( wpcom ),
-			sanitizerFunction: this.trimWhitespace,
+			sanitizerFunction: this.sanitize,
 			validatorFunction: this.validate,
 			onNewState: this.setFormState,
 			onError: this.handleFormControllerError
@@ -70,17 +70,18 @@ export default React.createClass( {
 		analytics.pageView.record( '/checkout/domain-contact-information', 'Checkout > Domain Contact Information' );
 	},
 
-	trimWhitespace( fieldValues, onComplete ) {
-		const trimmedFieldValues = Object.assign( {}, fieldValues );
+	sanitize( fieldValues, onComplete ) {
+		const sanitizedFieldValues = Object.assign( {}, fieldValues );
 		this.fieldNames.forEach( ( fieldName ) => {
 			if ( typeof fieldValues[ fieldName ] === 'string' ) {
-				trimmedFieldValues[ fieldName ] = fieldValues[ fieldName ].trim();
-			} else {
-				trimmedFieldValues[ fieldName ] = fieldValues[ fieldName ];
+				sanitizedFieldValues[ fieldName ] = fieldValues[ fieldName ].trim();
+				if ( fieldName === 'postalCode' ) {
+					sanitizedFieldValues[ fieldName ] = sanitizedFieldValues[ fieldName ].toUpperCase();
+				}
 			}
 		} );
 
-		onComplete( trimmedFieldValues );
+		onComplete( sanitizedFieldValues );
 	},
 
 	validate( fieldValues, onComplete ) {
@@ -153,29 +154,28 @@ export default React.createClass( {
 		return cartItems.getDomainRegistrationsWithoutPrivacy( this.props.cart ).length === 0;
 	},
 
-	renderPrivacySection() {
-		return (
-			<PrivacyProtection
-				cart={ this.props.cart }
-				countriesList= { countriesList }
-				disabled={ formState.isSubmitButtonDisabled( this.state.form ) }
-				fields={ this.state.form }
-				isChecked={ this.allDomainRegistrationsHavePrivacy() }
-				onCheckboxChange={ this.handleCheckboxChange }
-				onButtonSelect={ this.handlePrivacyDialogButtonSelect }
-				onDialogClose={ this.closeDialog }
-				onDialogOpen={ this.openDialog }
-				onDialogSelect={ this.handlePrivacyDialogSelect }
-				isDialogVisible={ this.state.isDialogVisible }
-				productsList={ this.props.productsList } />
-		);
-	},
-
 	renderSubmitButton() {
 		return (
 			<FormButton className="checkout__domain-details-form-submit-button" onClick={ this.handleSubmitButtonClick }>
 				{ this.translate( 'Continue to Checkout' ) }
 			</FormButton>
+		);
+	},
+
+	renderPrivacySection() {
+		return (
+			<PrivacyProtection
+				cart={ this.props.cart }
+				countriesList={ countriesList }
+				disabled={ formState.isSubmitButtonDisabled( this.state.form ) }
+				fields={ this.state.form }
+				isChecked={ this.allDomainRegistrationsHavePrivacy() }
+				onCheckboxChange={ this.handleCheckboxChange }
+				onDialogClose={ this.closeDialog }
+				onDialogOpen={ this.openDialog }
+				onDialogSelect={ this.handlePrivacyDialogSelect }
+				isDialogVisible={ this.state.isDialogVisible }
+				productsList={ this.props.productsList }/>
 		);
 	},
 
@@ -208,7 +208,16 @@ export default React.createClass( {
 					{ ...fieldProps( 'organization' ) }/>
 
 				<Input label={ this.translate( 'Email', { textOnly } ) } { ...fieldProps( 'email' ) }/>
-				<Input label={ this.translate( 'Phone', { textOnly } ) } { ...fieldProps( 'phone' ) }/>
+				<Input
+					label={ this.translate( 'Phone', { textOnly } ) }
+					placeholder={ this.translate(
+						'e.g. +1.555.867.5309',
+						{
+							context: 'Domain contact info phone placeholder',
+							comment: 'Please use the phone number format most common for your language, but it must begin with just the country code in the format \'+1\' - no parenthesis, leading zeros, etc.'
+						}
+					) }
+					{ ...fieldProps( 'phone' ) }/>
 
 				<CountrySelect
 					label={ this.translate( 'Country', { textOnly } ) }
@@ -216,11 +225,12 @@ export default React.createClass( {
 					{ ...fieldProps( 'country-code' ) }/>
 
 				{ this.needsFax() && <Input label={ this.translate( 'Fax', { textOnly } ) } { ...fieldProps( 'fax' ) }/> }
-				<Input label={ this.translate( 'Address', { textOnly } ) } { ...fieldProps( 'address-1' ) }/>
+				<Input label={ this.translate( 'Address', { textOnly } ) } maxLength={ 40 } { ...fieldProps( 'address-1' ) }/>
 
 				<HiddenInput
 					label={ this.translate( 'Address Line 2', { textOnly } ) }
 					text={ this.translate( '+ Add Address Line 2', { textOnly } ) }
+					maxLength={ 40 }
 					{ ...fieldProps( 'address-2' ) }/>
 
 				<Input label={ this.translate( 'City', { textOnly } ) } { ...fieldProps( 'city' ) }/>
@@ -233,19 +243,13 @@ export default React.createClass( {
 
 				<Input label={ this.translate( 'Postal Code', { textOnly } ) } { ...fieldProps( 'postal-code' ) }/>
 
-				{ ( abtest( 'privacyCheckbox' ) !== 'checkbox'
-					? this.renderPrivacySection()
-					: this.renderSubmitButton() ) }
+				{ this.renderSubmitButton() }
 			</div>
 		);
 	},
 
 	handleCheckboxChange() {
-		if ( this.allDomainRegistrationsHavePrivacy() ) {
-			removePrivacyFromAllDomains();
-		} else {
-			addPrivacyToAllDomains();
-		}
+		this.setPrivacyProtectionSubscriptions( ! this.allDomainRegistrationsHavePrivacy() );
 	},
 
 	closeDialog() {
@@ -271,16 +275,16 @@ export default React.createClass( {
 	handleSubmitButtonClick( event ) {
 		event.preventDefault();
 
-		if ( ! this.allDomainRegistrationsHavePrivacy() ) {
-			this.openDialog();
-			return;
-		}
-
 		this.formStateController.handleSubmit( ( hasErrors ) => {
 			this.recordSubmit();
 
 			if ( hasErrors ) {
 				this.focusFirstError();
+				return;
+			}
+
+			if ( ! this.allDomainRegistrationsHavePrivacy() ) {
+				this.openDialog();
 				return;
 			}
 
@@ -288,36 +292,23 @@ export default React.createClass( {
 		} );
 	},
 
-	handlePrivacyDialogButtonSelect( options ) {
-		this.formStateController.handleSubmit( ( hasErrors ) => {
-			this.recordSubmit();
-
-			if ( hasErrors ) {
-				this.focusFirstError();
-				return;
-			}
-
-			if ( options.addPrivacy ) {
-				this.finish( { addPrivacy: true } );
-			} else if ( options.skipPrivacyDialog ) {
-				this.finish( { addPrivacy: false } );
-			} else {
-				this.openDialog();
-			}
-		} );
-	},
-
 	recordSubmit() {
+		const errors = formState.getErrorMessages( this.state.form );
 		analytics.tracks.recordEvent( 'calypso_contact_information_form_submit', {
-			errors: formState.getErrorMessages( this.state.form )
+			errors,
+			errors_count: errors && errors.length || 0,
+			submission_count: this.state.submissionCount + 1
 		} );
+		this.setState( { submissionCount: this.state.submissionCount + 1 } );
 	},
 
 	handlePrivacyDialogSelect( options ) {
 		this.formStateController.handleSubmit( ( hasErrors ) => {
 			this.recordSubmit();
 
-			if ( hasErrors ) {
+			if ( hasErrors || options.skipFinish ) {
+				this.setPrivacyProtectionSubscriptions( options.addPrivacy !== false );
+				this.closeDialog();
 				return;
 			}
 
@@ -326,13 +317,17 @@ export default React.createClass( {
 	},
 
 	finish( options = {} ) {
-		if ( options.addPrivacy ) {
-			addPrivacyToAllDomains();
-		} else if ( options.addPrivacy === false ) {
-			removePrivacyFromAllDomains();
-		}
+		this.setPrivacyProtectionSubscriptions( options.addPrivacy !== false );
 
 		setDomainDetails( formState.getAllFieldValues( this.state.form ) );
+	},
+
+	setPrivacyProtectionSubscriptions( enable ) {
+		if ( enable ) {
+			addPrivacyToAllDomains();
+		} else {
+			removePrivacyFromAllDomains();
+		}
 	},
 
 	render() {
@@ -343,10 +338,7 @@ export default React.createClass( {
 
 		return (
 			<div>
-				{ ( abtest( 'privacyCheckbox' ) === 'checkbox'
-					? this.renderPrivacySection()
-					: null ) }
-
+				{ this.renderPrivacySection() }
 				<PaymentBox
 					classSet={ classSet }
 					title={ this.translate(

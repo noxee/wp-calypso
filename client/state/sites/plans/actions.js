@@ -4,6 +4,7 @@
 import debugFactory from 'debug';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
+import i18n from 'i18n-calypso';
 
 const debug = debugFactory( 'calypso:site-plans:actions' );
 
@@ -11,7 +12,6 @@ const debug = debugFactory( 'calypso:site-plans:actions' );
  * Internal dependencies
  */
 import { createSitePlanObject } from './assembler';
-import i18n from 'lib/mixins/i18n';
 import {
 	SITE_PLANS_FETCH,
 	SITE_PLANS_FETCH_COMPLETED,
@@ -62,7 +62,7 @@ export function cancelSitePlanTrial( siteId, planId ) {
 				}
 			} );
 		} );
-	}
+	};
 }
 
 /**
@@ -110,7 +110,7 @@ export function fetchSitePlans( siteId ) {
 				resolve();
 			} );
 		} );
-	}
+	};
 }
 
 /**
@@ -122,12 +122,12 @@ export function fetchSitePlans( siteId ) {
  * @returns {Object} the corresponding action object
  */
 export function fetchSitePlansCompleted( siteId, data ) {
-	data = omit( data, '_headers' );
+	const plans = omit( data, '_headers' );
 
 	return {
 		type: SITE_PLANS_FETCH_COMPLETED,
 		siteId,
-		plans: map( data, createSitePlanObject )
+		plans: map( plans, createSitePlanObject )
 	};
 }
 
@@ -141,5 +141,5 @@ export function refreshSitePlans( siteId ) {
 	return ( dispatch ) => {
 		dispatch( clearSitePlans( siteId ) );
 		dispatch( fetchSitePlans( siteId ) );
-	}
+	};
 }

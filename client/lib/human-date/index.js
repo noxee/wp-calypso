@@ -1,4 +1,4 @@
-var i18n = require( 'lib/mixins/i18n' );
+var i18n = require( 'i18n-calypso' );
 
 const MILLIS_IN_MINUTE = 60 * 1000;
 
@@ -13,12 +13,7 @@ module.exports = function humanDate( dateOrMoment ) {
 
 	if ( millisAgo < MILLIS_IN_MINUTE ) {
 		let seconds = Math.ceil( millisAgo / 1000 );
-		return i18n.translate( '%(seconds)ds ago', {
-			args: {
-				seconds: seconds
-			},
-			comment: 'example for a resulting string: 3s ago'
-		} );
+		return i18n.translate( 'just now' );
 	}
 
 	if ( millisAgo < MILLIS_IN_MINUTE * 60 ) {

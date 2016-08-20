@@ -6,17 +6,12 @@ var analytics = require( 'lib/analytics' ),
 	debug = require( 'debug' )( 'calypso:my-sites:sidebar' ),
 	has = require( 'lodash/has' ),
 	includes = require( 'lodash/includes' ),
-	React = require( 'react' ),
-	startsWith = require( 'lodash/startsWith' );
-
-import page from 'page';
+	React = require( 'react' );
 
 /**
  * Internal dependencies
  */
-var abtest = require( 'lib/abtest' ).abtest,
-	AdsUtils = require( 'lib/ads/utils' ),
-	config = require( 'config' ),
+var config = require( 'config' ),
 	CurrentSite = require( 'my-sites/current-site' ),
 	getCustomizeUrl = require( '../themes/helpers' ).getCustomizeUrl,
 	Gridicon = require( 'components/gridicon' ),
@@ -26,12 +21,13 @@ var abtest = require( 'lib/abtest' ).abtest,
 	SidebarHeading = require( 'layout/sidebar/heading' ),
 	SidebarItem = require( 'layout/sidebar/item' ),
 	SidebarMenu = require( 'layout/sidebar/menu' ),
+	SidebarRegion = require( 'layout/sidebar/region' ),
 	SiteStatsStickyLink = require( 'components/site-stats-sticky-link' );
 
 import Button from 'components/button';
+import SidebarButton from 'layout/sidebar/button';
 import SidebarFooter from 'layout/sidebar/footer';
-import DraftsButton from 'post-editor/drafts-button';
-import Tooltip from 'components/tooltip';
+import { isPersonal, isPremium, isBusiness } from 'lib/products-values';
 
 module.exports = React.createClass( {
 	displayName: 'MySitesSidebar',
@@ -40,15 +36,17 @@ module.exports = React.createClass( {
 		debug( 'The sidebar React component is mounted.' );
 	},
 
-	getInitialState: function() {
-		return {
-			draftsTooltip: false
-		};
-	},
-
 	onNavigate: function() {
 		this.props.layoutFocus.setNext( 'content' );
 		window.scrollTo( 0, 0 );
+	},
+
+	onPreviewSite( event ) {
+		const site = this.getSelectedSite();
+		if ( site.is_previewable && ! event.metaKey && ! event.ctrlKey ) {
+			event.preventDefault();
+			this.props.layoutFocus.set( 'preview' );
+		}
 	},
 
 	itemLinkClass: function( paths, existingClasses ) {
@@ -75,7 +73,7 @@ module.exports = React.createClass( {
 		}
 
 		return paths.some( function( path ) {
-			return startsWith( this.props.path, path );
+			return path === this.props.path || 0 === this.props.path.indexOf( path + '/' );
 		}, this );
 	},
 
@@ -145,14 +143,14 @@ module.exports = React.createClass( {
 		var site = this.getSelectedSite(),
 			adsLink = '/ads/earnings' + this.siteSuffix();
 
-		if ( ! AdsUtils.canAccessWordads( site ) ) {
+		if ( ! site || ! site.options.wordads ) {
 			return null;
 		}
 
 		return (
 			<SidebarItem
 				label={ site.jetpack ? 'AdControl' : 'WordAds' }
-				className={ this.itemLinkClass( '/ads', 'ads' ) }
+				className={ this.itemLinkClass( '/ads', 'rads' ) }
 				link={ adsLink }
 				onNavigate={ this.onNavigate }
 				icon="speaker" />
@@ -180,32 +178,20 @@ module.exports = React.createClass( {
 			themesLink = '/design';
 		}
 
-		if ( abtest( 'swapButtonsMySiteSidebar' ) === 'swap' ) {
-			return (
-				<SidebarItem
-					tipTarget="themes"
-					label={ this.translate( 'Customize' ) }
-					className={ this.itemLinkClass( '/design', 'themes' ) }
-					link={ getCustomizeUrl( null, site ) }
-					buttonLink={ themesLink }
-					buttonLabel={ this.translate( 'Themes' ) }
-					onNavigate={ this.onNavigate }
-					icon={ 'themes' }
-					preloadSectionName="themes" />
-			);
-		}
-
 		return (
 			<SidebarItem
-				tipTarget="themes"
 				label={ this.translate( 'Themes' ) }
+				tipTarget="themes"
 				className={ this.itemLinkClass( '/design', 'themes' ) }
 				link={ themesLink }
-				buttonLink={ getCustomizeUrl( null, site ) }
-				buttonLabel={ this.translate( 'Customize' ) }
 				onNavigate={ this.onNavigate }
-				icon={ 'themes' }
-				preloadSectionName="themes" />
+				icon="themes"
+				preloadSectionName="themes"
+			>
+				<SidebarButton href={ getCustomizeUrl( null, site ) } preloadSectionName="customize">
+					{ this.translate( 'Customize' ) }
+				</SidebarButton>
+			</SidebarItem>
 		);
 	},
 
@@ -265,10 +251,6 @@ module.exports = React.createClass( {
 			return null;
 		}
 
-		if ( ! config.isEnabled( 'manage/plugins/wpcom' ) && ! this.props.sites.hasSiteWithPlugins() ) {
-			return null;
-		}
-
 		if ( ( this.isSingle() && site.jetpack ) || ( ! this.isSingle() && this.hasJetpackSites() ) ) {
 			addPluginsLink = '/plugins/browse' + this.siteSuffix();
 		}
@@ -278,11 +260,14 @@ module.exports = React.createClass( {
 				label={ this.translate( 'Plugins' ) }
 				className={ this.itemLinkClass( '/plugins', 'plugins' ) }
 				link={ pluginsLink }
-				buttonLink={ addPluginsLink }
-				buttonLabel={ this.translate( 'Add' ) }
 				onNavigate={ this.onNavigate }
 				icon="plugins"
-				preloadSectionName="plugins" />
+				preloadSectionName="plugins"
+			>
+				<SidebarButton href={ addPluginsLink }>
+					{ this.translate( 'Add' ) }
+				</SidebarButton>
+			</SidebarItem>
 		);
 	},
 
@@ -316,11 +301,14 @@ module.exports = React.createClass( {
 				label={ this.translate( 'Domains' ) }
 				className={ this.itemLinkClass( [ '/domains' ], 'domains' ) }
 				link={ domainsLink }
-				buttonLink={ addDomainLink }
-				buttonLabel={ this.translate( 'Add' ) }
 				onNavigate={ this.onNavigate }
 				icon="globe"
-				preloadSectionName="upgrades" />
+				preloadSectionName="upgrades"
+			>
+				<SidebarButton href={ addDomainLink }>
+					{ this.translate( 'Add' ) }
+				</SidebarButton>
+			</SidebarItem>
 		);
 	},
 
@@ -343,7 +331,15 @@ module.exports = React.createClass( {
 			return null;
 		}
 
-		const planLink = '/plans' + this.siteSuffix();
+		let planLink = '/plans' + this.siteSuffix();
+
+		// Show plan details for upgraded sites
+		if (
+			site &&
+			( isPersonal( site.plan ) || isPremium( site.plan ) || isBusiness( site.plan ) )
+		) {
+			planLink = '/plans/my-plan' + this.siteSuffix();
+		}
 
 		let linkClass = 'upgrades-nudge';
 
@@ -371,7 +367,9 @@ module.exports = React.createClass( {
 	},
 
 	trackUpgradeClick: function() {
-		analytics.tracks.recordEvent( 'calypso_upgrade_nudge_cta_click', { cta_name: 'sidebar_upgrade_default' } );
+		analytics.tracks.recordEvent( 'calypso_upgrade_nudge_cta_click', {
+			cta_name: 'sidebar_upgrade_default'
+		} );
 		this.onNavigate();
 	},
 
@@ -383,7 +381,11 @@ module.exports = React.createClass( {
 			return null;
 		}
 
-		if ( site.jetpack && ! site.isModuleActive( 'publicize' ) && ( ! site.isModuleActive( 'sharedaddy' ) || site.versionCompare( '3.4-dev', '<' ) ) ) {
+		if (
+			site.jetpack &&
+			! site.isModuleActive( 'publicize' ) &&
+			( ! site.isModuleActive( 'sharedaddy' ) || site.versionCompare( '3.4-dev', '<' ) )
+		) {
 			return null;
 		}
 
@@ -442,11 +444,14 @@ module.exports = React.createClass( {
 				label={ this.translate( 'People' ) }
 				className={ this.itemLinkClass( '/people', 'users' ) }
 				link={ usersLink }
-				buttonLink={ addPeopleLink }
-				buttonLabel={ this.translate( 'Add' ) }
 				onNavigate={ this.onNavigate }
 				icon="user"
-				preloadSectionName="people" />
+				preloadSectionName="people"
+			>
+				<SidebarButton href={ addPeopleLink }>
+					{ this.translate( 'Add' ) }
+				</SidebarButton>
+			</SidebarItem>
 		);
 	},
 
@@ -649,7 +654,7 @@ module.exports = React.createClass( {
 		this.props.layoutFocus.set( 'content' );
 	},
 
-	addNewWordPress: function() {
+	addNewSite: function() {
 		if ( this.props.user.get().visible_site_count > 1 ) {
 			return null;
 		}
@@ -665,10 +670,6 @@ module.exports = React.createClass( {
 		);
 	},
 
-	onDraftsClick: function() {
-		page( '/posts/drafts' + this.siteSuffix() );
-	},
-
 	render: function() {
 		var publish = !! this.publish(),
 			appearance = ( !! this.themes() || !! this.menus() ),
@@ -677,14 +678,15 @@ module.exports = React.createClass( {
 
 		return (
 			<Sidebar>
+				<SidebarRegion>
 				<CurrentSite
 					sites={ this.props.sites }
 					siteCount={ this.props.user.get().visible_site_count }
+					onClick={ this.onPreviewSite }
 				/>
 				<SidebarMenu>
 					<ul>
 						{ this.stats() }
-						{ this.ads() }
 						{ this.plan() }
 					</ul>
 				</SidebarMenu>
@@ -706,26 +708,7 @@ module.exports = React.createClass( {
 
 				{ publish
 					? <SidebarMenu>
-						<SidebarHeading>
-							{ this.translate( 'Publish' ) }
-							{ config.isEnabled( 'sidebar-drafts-count' ) &&
-								<div
-									className="sidebar__drafts-button"
-									onMouseEnter={ () => this.setState( { draftsTooltip: true } ) }
-									onMouseLeave={ () => this.setState( { draftsTooltip: false } ) }
-									ref="draftsButton"
-								>
-									<DraftsButton hideText onClick={ this.onDraftsClick } />
-									<Tooltip
-										context={ this.refs && this.refs.draftsButton }
-										isVisible={ this.state.draftsTooltip }
-										position="top"
-									>
-										{ this.translate( 'Drafts' ) }
-									</Tooltip>
-								</div>
-							}
-						</SidebarHeading>
+						<SidebarHeading>{ this.translate( 'Publish' ) }</SidebarHeading>
 						{ this.publish() }
 					</SidebarMenu>
 					: null
@@ -746,6 +729,7 @@ module.exports = React.createClass( {
 					? <SidebarMenu>
 						<SidebarHeading>{ this.translate( 'Configure' ) }</SidebarHeading>
 						<ul>
+							{ this.ads() }
 							{ this.sharing() }
 							{ this.users() }
 							{ this.plugins() }
@@ -756,8 +740,9 @@ module.exports = React.createClass( {
 					</SidebarMenu>
 					: null
 				}
+				</SidebarRegion>
 				<SidebarFooter>
-					{ this.addNewWordPress() }
+					{ this.addNewSite() }
 				</SidebarFooter>
 			</Sidebar>
 		);

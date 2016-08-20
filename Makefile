@@ -18,13 +18,13 @@ NODE_BIN := $(THIS_DIR)/node_modules/.bin
 NODE ?= node
 NPM ?= npm
 BUNDLER ?= $(BIN)/bundler
+I18N_CALYPSO ?= $(NODE_BIN)/i18n-calypso
 SASS ?= $(NODE_BIN)/node-sass --include-path 'client'
 RTLCSS ?= $(NODE_BIN)/rtlcss
 AUTOPREFIXER ?= $(NODE_BIN)/postcss -r --use autoprefixer --autoprefixer.browsers "last 2 versions, > 1%, Safari >= 8, iOS >= 8, Firefox ESR, Opera 12.1"
 RECORD_ENV ?= $(BIN)/record-env
-GET_I18N ?= $(BIN)/get-i18n
-LIST_ASSETS ?= $(BIN)/list-assets
 ALL_DEVDOCS_JS ?= server/devdocs/bin/generate-devdocs-index
+COMPONENTS_USAGE_STATS_JS ?= server/devdocs/bin/generate-components-usage-stats.js
 
 # files used as prereqs
 SASS_FILES := $(shell \
@@ -50,6 +50,14 @@ MD_FILES := $(shell \
 		-type f \
 		-name '*.md' \
 	| sed 's/ /\\ /g' \
+)
+COMPONENTS_USAGE_STATS_FILES = $(shell \
+	find client \
+		-not \( -path '*/docs/*' -prune \) \
+		-not \( -path '*/test/*' -prune \) \
+		-not \( -path '*/docs-example/*' -prune \) \
+		-type f \
+		\( -name '*.js' -or -name '*.jsx' \) \
 )
 CLIENT_CONFIG_FILE := client/config/index.js
 
@@ -93,12 +101,8 @@ node_modules: package.json | node-version
 	@$(NPM) install
 	@touch node_modules
 
-# run `make test` in all discovered Makefiles
 test: build
-	@npm run test-client
-	@npm run test-server
-	@npm run test-test
-	@$(BIN)/run-all-tests
+	@$(NPM) test
 
 lint: node_modules/eslint node_modules/eslint-plugin-react node_modules/babel-eslint mixedindentlint
 	@$(NPM) run lint
@@ -139,6 +143,9 @@ public/editor.css: node_modules $(SASS_FILES)
 server/devdocs/search-index.js: $(MD_FILES) $(ALL_DEVDOCS_JS)
 	@$(ALL_DEVDOCS_JS) $(MD_FILES)
 
+server/devdocs/components-usage-stats.json: $(COMPONENTS_USAGE_STATS_FILES) $(COMPONENTS_USAGE_STATS_JS)
+	@$(COMPONENTS_USAGE_STATS_JS) $(COMPONENTS_USAGE_STATS_FILES)
+
 build-server: install
 	@mkdir -p build
 	@CALYPSO_ENV=$(CALYPSO_ENV) $(NODE_BIN)/webpack --display-error-details --config webpack.config.node.js
@@ -147,9 +154,9 @@ build: install build-$(CALYPSO_ENV)
 
 build-css: public/style.css public/style-rtl.css public/style-debug.css public/editor.css
 
-build-development: build-server $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js build-css
+build-development: server/devdocs/components-usage-stats.json build-server $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js build-css
 
-build-wpcalypso: build-server $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js build-css
+build-wpcalypso: server/devdocs/components-usage-stats.json build-server $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js build-css
 	@$(BUNDLER)
 
 build-desktop build-desktop-mac-app-store build-horizon build-stage build-production: build-server $(CLIENT_CONFIG_FILE) build-css
@@ -158,16 +165,15 @@ build-desktop build-desktop-mac-app-store build-horizon build-stage build-produc
 # the `clean` rule deletes all the files created from `make build`, but not
 # those created by `make install`
 clean:
-	@rm -rf public/style*.css public/style-debug.css.map public/*.js $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js public/editor.css build/* server/bundler/*.json
+	@rm -rf public/style*.css public/style-debug.css.map public/*.js $(CLIENT_CONFIG_FILE) server/devdocs/search-index.js server/devdocs/components-usage-stats.json public/editor.css build/* server/bundler/*.json
 
 # the `distclean` rule deletes all the files created from `make install`
 distclean:
 	@rm -rf node_modules
 
-# create list of translations, saved as `./calypso-strings.php`
+# create list of translations, saved as `./calypso-strings.pot`
 translate: node_modules $(CLIENT_CONFIG_FILE)
-	@CALYPSO_ENV=stage $(BUNDLER)
-	@CALYPSO_ENV=stage $(LIST_ASSETS) | xargs $(GET_I18N) ./calypso-strings.php calypso_i18n_strings
+	$(I18N_CALYPSO) --format pot --output-file ./calypso-strings.pot $(JS_FILES)
 
 # install all git hooks
 githooks: githooks-commit githooks-push
@@ -179,6 +185,16 @@ githooks-commit:
 # install git pre-push hook
 githooks-push:
 	@if [ ! -e .git/hooks/pre-push ]; then ln -s ../../bin/pre-push .git/hooks/pre-push; fi
+
+# generate a new shrinkwrap
+shrinkwrap: node-version
+	@! lsof -Pi :3000 -sTCP:LISTEN -t || ( echo "Please stop your Calypso instance running on port 3000 and try again." && exit 1 )
+	@type shonkwrap || ( echo "Please install shonkwrap globally and try again: 'npm install -g shonkwrap'" && exit 1 )
+	@rm -rf node_modules
+	@rm -f npm-shrinkwrap.json
+	@$(NPM) install --no-optional
+	@$(NPM) install --no-optional # remove this when this is fixed in npm 3
+	@shonkwrap --dev
 
 # rule that can be used as a prerequisite for other rules to force them to always run
 FORCE:

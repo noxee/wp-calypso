@@ -1,4 +1,4 @@
-var i18n = require( 'lib/mixins/i18n' ),
+var i18n = require( 'i18n-calypso' ),
 	Emitter = require( 'lib/mixins/emitter' );
 
 function KeyBindings() {
@@ -47,6 +47,14 @@ KeyBindings.prototype.get = function() {
 					keys: [ 'enter' ],
 					text: i18n.translate( 'Open selection' )
 				}
+			},
+			{
+				eventName: 'go-to-top',
+				keys: [ '.' ],
+				description: {
+					keys: [ '.' ],
+					text: i18n.translate( 'Go to top' )
+				},
 			}
 		],
 

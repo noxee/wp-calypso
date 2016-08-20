@@ -1,5 +1,6 @@
 // child components
 @import 'placeholder';
+@import 'expand';
 
 // Select Dropdown
 .stats-module__select-dropdown-wrapper {
@@ -21,11 +22,11 @@
 	margin-bottom: 16px;
 }
 // Site sections
-.module-list {
+.stats__module-list {
 	@include clear-fix;
 }
 
-.stats-nonperiodic {
+.stats-insights__nonperiodic {
 	&.has-no-recent {
 		color: $gray-dark;
 		font-weight: 300;
@@ -97,7 +98,7 @@
 		}
 
 		@include breakpoint( ">960px" ) {
-			.module-list & {
+			.stats__module-list & {
 				font-size: 12px;
 			}
 		}
@@ -262,7 +263,7 @@ ul.module-header-actions {
 	}
 
 	@include breakpoint( ">960px" ) {
-		.module-list & {
+		.stats__module-list & {
 			font-size: 12px;
 		}
 	}
@@ -324,7 +325,7 @@ ul.module-header-actions {
 			line-height: 2em;
 
 			@include breakpoint( ">960px" ) {
-				.module-list & {
+				.stats__module-list & {
 					font-size: 12px;
 				}
 			}

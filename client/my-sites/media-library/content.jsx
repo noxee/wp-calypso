@@ -210,8 +210,8 @@ const MediaLibraryContent = React.createClass( {
 		return (
 			<NoticeAction
 				external={ true }
-				href={ upgradeNudgeFeature ? `/plans/features/${ upgradeNudgeFeature }/${ this.props.siteSlug }` : `/plans/${ this.props.siteSlug }` }
-				onClick={ this.recordPlansNavigation.bind( this, 'plan-media-storage-error', eventProperties ) }>
+				href={ upgradeNudgeFeature ? `/plans/compare/${ this.props.siteSlug }?feature=${ upgradeNudgeFeature }` : `/plans/${ this.props.siteSlug }` }
+				onClick={ this.recordPlansNavigation.bind( this, 'calypso_upgrade_nudge_cta_click', eventProperties ) }>
 				{ this.translate( 'Upgrade Plan' ) }
 				<TrackComponentView eventName={ eventName } eventProperties={ eventProperties } />
 			</NoticeAction>
@@ -258,7 +258,8 @@ const MediaLibraryContent = React.createClass( {
 						mediaScale={ this.getMediaScale() }
 						mediaScaleChoices={ this.props.mediaScaleChoices }
 						onMediaScaleChange={ this.onMediaScaleChange }
-						onAddMedia={ this.props.onAddMedia } />
+						onAddMedia={ this.props.onAddMedia }
+						onAddAndEditImage={ this.props.onAddAndEditImage } />
 				}
 				{ this.renderErrors() }
 				{ this.renderMediaList() }

@@ -2,6 +2,7 @@
  * Externel dependencies
  */
 import noop from 'lodash/noop';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
@@ -13,7 +14,6 @@ import DnsStore from 'lib/domains/dns/store';
 import domainsAssembler from 'lib/domains/assembler';
 import DomainsStore from 'lib/domains/store';
 import EmailForwardingStore from 'lib/domains/email-forwarding/store';
-import i18n from 'lib/mixins/i18n';
 import NameserversStore from 'lib/domains/nameservers/store';
 import sitesFactory from 'lib/sites-list';
 import wapiDomainInfoAssembler from 'lib/domains/wapi-domain-info/assembler';
@@ -22,6 +22,7 @@ import whoisAssembler from 'lib/domains/whois/assembler';
 import WhoisStore from 'lib/domains/whois/store';
 import wp from 'lib/wp';
 import debugFactory from 'debug';
+import { isBeingProcessed } from 'lib/domains/dns';
 
 const debug = debugFactory( 'actions:domain-management' );
 
@@ -244,7 +245,9 @@ function addDns( domainName, record, onComplete ) {
 		record
 	} );
 
-	wpcom.addDns( domainName, record, ( error ) => {
+	const dns = DnsStore.getByDomainName( domainName );
+
+	wpcom.updateDns( domainName, dns.records, ( error ) => {
 		const type = ! error ? ActionTypes.DNS_ADD_COMPLETED : ActionTypes.DNS_ADD_FAILED;
 		Dispatcher.handleServerAction( {
 			type,
@@ -257,13 +260,19 @@ function addDns( domainName, record, onComplete ) {
 }
 
 function deleteDns( domainName, record, onComplete ) {
+	if ( isBeingProcessed( record ) ) {
+		return;
+	}
+
 	Dispatcher.handleServerAction( {
 		type: ActionTypes.DNS_DELETE,
 		domainName,
-		record,
+		record
 	} );
 
-	wpcom.deleteDns( domainName, record, ( error ) => {
+	const dns = DnsStore.getByDomainName( domainName );
+
+	wpcom.updateDns( domainName, dns.records, ( error ) => {
 		const type = ! error ? ActionTypes.DNS_DELETE_COMPLETED : ActionTypes.DNS_DELETE_FAILED;
 
 		Dispatcher.handleServerAction( {

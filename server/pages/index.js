@@ -4,7 +4,6 @@ var express = require( 'express' ),
 	qs = require( 'qs' ),
 	execSync = require( 'child_process' ).execSync,
 	cookieParser = require( 'cookie-parser' ),
-	i18nUtils = require( 'lib/i18n-utils' ),
 	debug = require( 'debug' )( 'calypso:pages' );
 
 var config = require( 'config' ),
@@ -27,15 +26,7 @@ var staticFiles = [
 	{ path: 'style-rtl.css' }
 ];
 
-var chunksByPath = {};
-
 var sections = sectionsModule.get();
-
-sections.forEach( function( section ) {
-	section.paths.forEach( function( path ) {
-		chunksByPath[ path ] = section.name;
-	} );
-} );
 
 /**
  * Generates a hash of a files contents to be used as a version parameter on asset requests.
@@ -83,33 +74,18 @@ function generateStaticUrls( request ) {
 	assets = request.app.get( 'assets' );
 
 	assets.forEach( function( asset ) {
-		urls[ asset.name ] = asset.url;
+		let name = asset.name;
+		if ( ! name ) {
+			// this is for auto-generated chunks that don't have names, like the commons chunk
+			name = asset.url.replace( /\/calypso\/(\w+)\..*/, '_$1' );
+		}
+		urls[ name ] = asset.url;
 		if ( config( 'env' ) !== 'development' ) {
-			urls[ asset.name + '-min' ] = asset.url.replace( '.js', '.min.js' );
+			urls[ name + '-min' ] = asset.url.replace( '.js', '.min.js' );
 		}
 	} );
 
 	return urls;
-}
-
-function getChunk( path ) {
-	var regex, chunkPath;
-
-	for ( chunkPath in chunksByPath ) {
-		if ( chunkPath === path ) {
-			return chunksByPath[ chunkPath ];
-		}
-
-		if ( chunkPath === '/' ) {
-			continue;
-		}
-
-		regex = utils.pathToRegExp( chunkPath );
-
-		if ( regex.test( path ) ) {
-			return chunksByPath[ chunkPath ];
-		}
-	}
 }
 
 function getCurrentBranchName() {
@@ -129,9 +105,7 @@ function getCurrentCommitShortChecksum() {
 }
 
 function getDefaultContext( request ) {
-	var context, chunk;
-
-	context = {
+	var context = Object.assign( {}, request.context, {
 		compileDebug: config( 'env' ) === 'development' ? true : false,
 		urls: generateStaticUrls( request ),
 		user: false,
@@ -144,9 +118,9 @@ function getDefaultContext( request ) {
 		jsFile: 'build',
 		faviconURL: '//s1.wp.com/i/favicon.ico',
 		isFluidWidth: !! config.isEnabled( 'fluid-width' ),
-		devDocsURL: '/devdocs',
-		catchJsErrors: '/calypso/catch-js-errors-' + 'v2' + '.min.js'
-	};
+		abTestHelper: !! config.isEnabled( 'dev/test-helper' ),
+		devDocsURL: '/devdocs'
+	} );
 
 	context.app = {
 		// use ipv4 address when is ipv4 mapped address
@@ -184,41 +158,15 @@ function getDefaultContext( request ) {
 		context.commitChecksum = getCurrentCommitShortChecksum();
 	}
 
-	if ( config.isEnabled( 'code-splitting' ) ) {
-		chunk = getChunk( request.path );
-
-		if ( chunk ) {
-			context.chunk = chunk;
-		}
-	}
-
 	return context;
 }
 
 function setUpLoggedOutRoute( req, res, next ) {
-	var context = getDefaultContext( req ),
-		language;
-
+	req.context = getDefaultContext( req );
 	res.set( {
 		'X-Frame-Options': 'SAMEORIGIN'
 	} );
 
-	// Set up the locale in case it has ended up in the flow param
-	req.params = i18nUtils.setUpLocale( req.params );
-
-	language = i18nUtils.getLanguage( req.params.lang );
-	if ( language ) {
-		context.lang = req.params.lang;
-		if ( language.rtl ) {
-			context.isRTL = true;
-		}
-	}
-
-	if ( context.lang !== config( 'i18n_default_locale_slug' ) ) {
-		context.i18nLocaleScript = '//widgets.wp.com/languages/calypso/' + context.lang + '.js';
-	}
-
-	req.context = context;
 	next();
 }
 
@@ -282,10 +230,6 @@ function setUpLoggedInRoute( req, res, next ) {
 				context.lang = data.localeSlug;
 			}
 
-			if ( context.lang !== config( 'i18n_default_locale_slug' ) ) {
-				context.i18nLocaleScript = '//widgets.wp.com/languages/calypso/' + context.lang + '.js';
-			}
-
 			if ( req.path === '/' && req.query ) {
 				searchParam = req.query.s || req.query.q;
 				if ( searchParam ) {
@@ -324,6 +268,12 @@ function setUpRoute( req, res, next ) {
 	}
 }
 
+function render404( request, response ) {
+	response.status( 404 ).render( '404.jade', {
+		urls: generateStaticUrls( request )
+	} );
+}
+
 module.exports = function() {
 	var app = express();
 
@@ -357,50 +307,50 @@ module.exports = function() {
 		res.redirect( redirectUrl );
 	} );
 
-	app.get( '/calypso/?*', function( request, response ) {
-		response.status( 404 ).render( '404.jade', {
-			urls: generateStaticUrls( request )
-		} );
-	} );
-
-	if ( config.isEnabled( 'login' ) ) {
-		app.get( '/log-in/:lang?', setUpLoggedOutRoute, serverRender );
-	}
-
-	app.get( '/start/:flowName?/:stepName?/:stepSectionName?/:lang?', setUpRoute, serverRender );
-
-	app.get( '/accept-invite/:site_id?/:invitation_key?/:activation_key?/:auth_key?/:locale?',
-		setUpRoute,
-		serverRender
-	);
-
-	if ( config.isEnabled( 'phone_signup' ) ) {
-		app.get( '/phone/:lang?', setUpLoggedOutRoute, serverRender );
-	}
-
-	if ( config.isEnabled( 'mailing-lists/unsubscribe' ) ) {
-		app.get( '/mailing-lists/unsubscribe', setUpRoute, serverRender );
-	}
-
-	if ( config.isEnabled( 'reader/discover' ) && config( 'env' ) !== 'development' ) {
+	if ( config( 'env' ) !== 'development' ) {
 		app.get( '/discover', function( req, res, next ) {
-			if ( req.cookies.wordpress_logged_in ) {
-				setUpLoggedInRoute( req, res, next );
-			} else {
+			if ( ! req.cookies.wordpress_logged_in ) {
 				res.redirect( config( 'discover_logged_out_redirect_url' ) );
+			} else {
+				next();
+			}
+		} );
+
+		app.get( '/plans', function( req, res, next ) {
+			if ( ! req.cookies.wordpress_logged_in ) {
+				res.redirect( 'https://wordpress.com/pricing' );
+			} else {
+				next();
 			}
 		} );
 	}
 
-	// Isomorphic routing
+	app.get( '/theme', ( req, res ) => res.redirect( '/design' ) );
+
 	sections
-		.filter( section => section.isomorphic )
 		.forEach( section => {
-			sectionsModule.require( section.module )( serverRouter( app, setUpRoute, section ) );
+			section.paths.forEach( path => {
+				const pathRegex = utils.pathToRegExp( path );
+
+				app.get( pathRegex, function( req, res, next ) {
+					if ( config.isEnabled( 'code-splitting' ) ) {
+						req.context = Object.assign( {}, req.context, { chunk: section.name } );
+					}
+					next();
+				} );
+
+				if ( ! section.isomorphic ) {
+					app.get( pathRegex, section.enableLoggedOut ? setUpRoute : setUpLoggedInRoute, serverRender );
+				}
+			} );
+
+			if ( section.isomorphic ) {
+				sectionsModule.require( section.module )( serverRouter( app, setUpRoute, section ) );
+			}
 		} );
 
-	// catchall path to serve shell for all non-static-file requests (other than auth routes)
-	app.get( '*', setUpLoggedInRoute, serverRender );
+	// catchall to render 404 for all routes not whitelisted in client/sections
+	app.get( '*', render404 );
 
 	return app;
 };

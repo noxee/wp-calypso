@@ -1,17 +1,18 @@
 /**
  * External dependencies
  */
-var debug = require( 'debug' )( 'calypso:protect-form' ),
-	page = require( 'page' );
+import debugModule from 'debug';
+import page from 'page';
+import i18n from 'i18n-calypso';
+import { without } from 'lodash';
 
 /**
- * Internal dependencies
+ * Module variables
  */
-var i18n = require( 'lib/mixins/i18n' );
-
-var confirmText = i18n.translate( 'You have unsaved changes. Are you sure you want to leave this page?' ),
-	beforeUnloadText = i18n.translate( 'You have unsaved changes.' ),
-	formsChanged = [];
+const debug = debugModule( 'calypso:protect-form' );
+const confirmText = i18n.translate( 'You have unsaved changes. Are you sure you want to leave this page?' );
+const beforeUnloadText = i18n.translate( 'You have unsaved changes.' );
+let formsChanged = [];
 
 module.exports = {
 	mixin: {
@@ -20,6 +21,7 @@ module.exports = {
 		},
 		componentWillUnmount: function() {
 			window.removeEventListener( 'beforeunload', this.warnIfChanged );
+			formsChanged = without( formsChanged, this );
 		},
 		warnIfChanged: function( event ) {
 			if ( ! formsChanged.length ) {

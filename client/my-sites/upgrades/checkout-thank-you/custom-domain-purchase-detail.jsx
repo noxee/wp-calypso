@@ -2,11 +2,11 @@
  * External dependencies
  */
 import React from 'react';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
-import i18n from 'lib/mixins/i18n';
 import PurchaseDetail from 'components/purchase-detail';
 
 const CustomDomainPurchaseDetail = ( { selectedSite } ) => {
@@ -19,7 +19,7 @@ const CustomDomainPurchaseDetail = ( { selectedSite } ) => {
 					"Replace your site's address, {{em}}%(siteDomain)s{{/em}}, with a custom domain. " +
 					'A free domain is included with your plan.',
 					{
-						args: { siteDomain: selectedSite.domain },
+						args: { siteDomain: selectedSite.slug },
 						components: { em: <em /> }
 					}
 				)

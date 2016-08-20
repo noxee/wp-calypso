@@ -8,6 +8,8 @@ import find from 'lodash/find';
 import includes from 'lodash/includes';
 import negate from 'lodash/negate';
 import range from 'lodash/range';
+import isEqual from 'lodash/isEqual';
+import map from 'lodash/map';
 
 /**
  * Internal dependencies
@@ -21,6 +23,19 @@ import PluginsListHeader from 'my-sites/plugins/plugin-list-header';
 import PluginsLog from 'lib/plugins/log-store';
 import PluginNotices from 'lib/plugins/notices';
 import SectionHeader from 'components/section-header';
+
+function checkPropsChange( nextProps, propArr ) {
+	var i, prop;
+
+	for ( i = 0; i < propArr.length; i++ ) {
+		prop = propArr[ i ];
+
+		if ( ! isEqual( nextProps[ prop ], this.props[ prop ] ) ) {
+			return true;
+		}
+	}
+	return false;
+}
 
 export default React.createClass( {
 	displayName: 'PluginsList',
@@ -40,10 +55,38 @@ export default React.createClass( {
 		isPlaceholder: PropTypes.bool.isRequired,
 	},
 
+	shouldComponentUpdate( nextProps, nextState ) {
+		var propsToCheck = [ 'plugins', 'sites', 'selectedSite', 'pluginUpdateCount', '' ];
+		if ( checkPropsChange.call( this, nextProps, propsToCheck ) ) {
+			return true;
+		}
+
+		if ( this.props.isPlaceholder !== nextProps.isPlaceholder ) {
+			return true;
+		}
+
+		if ( this.state.bulkManagementActive !== nextState.bulkManagementActive ) {
+			return true;
+		}
+
+		if ( this.state.disconnectJetpackDialog !== nextState.disconnectJetpackDialog ) {
+			return true;
+		}
+
+		if ( ! isEqual( this.state.selectedPlugins, nextState.selectedPlugins ) ) {
+			return true;
+		}
+		if ( this.shouldComponentUpdateNotices( this.state.notices, nextState.notices) ) {
+			return true;
+		}
+
+		return false;
+	},
+
 	getInitialState() {
 		return {
 			disconnectJetpackDialog: false,
-			bulkManagement: false,
+			bulkManagementActive: false,
 			selectedPlugins: {}
 		};
 	},
@@ -128,17 +171,17 @@ export default React.createClass( {
 
 	// Actions
 	toggleBulkManagement() {
-		const bulkManagement = ! this.state.bulkManagement;
+		const activateBulkManagement = ! this.state.bulkManagementActive;
 
-		if ( bulkManagement ) {
-			this.setState( { bulkManagement } );
-			return this.recordEvent( 'Clicked Manage' );
+		if ( activateBulkManagement ) {
+			this.setBulkSelectionState( this.props.plugins, true );
+			this.setState( { bulkManagementActive: true } );
+			this.recordEvent( 'Clicked Manage' );
+		} else {
+			this.setState( { bulkManagementActive: false } );
+			this.removePluginsNotices();
+			this.recordEvent( 'Clicked Manage Done' );
 		}
-
-		// Unselect all plugins.
-		this.setState( { selectedPlugins: {}, bulkManagement } );
-		this.removePluginsNotices();
-		this.recordEvent( 'Clicked Manage Done' );
 	},
 
 	removePluginsNotices() {
@@ -319,8 +362,10 @@ export default React.createClass( {
 	// Renders
 	render() {
 		const itemListClasses = classNames( 'list-cards-compact', 'plugins-list', {
-			'is-bulk-editing': this.state.bulkManagement
+			'is-bulk-editing': this.state.bulkManagementActive
 		} );
+
+		const selectedSiteSlug = this.props.sites.getSelectedSite() ? this.props.sites.getSelectedSite().slug : '';
 
 		if ( this.props.isPlaceholder ) {
 			return (
@@ -338,8 +383,8 @@ export default React.createClass( {
 		return (
 			<div className="plugins-list" >
 				<PluginsListHeader label={ this.props.header }
-					isBulkManagementActive={ !! this.state.bulkManagement }
-					sites={ this.props.sites }
+					isBulkManagementActive={ this.state.bulkManagementActive }
+					selectedSiteSlug={ selectedSiteSlug }
 					plugins={ this.props.plugins }
 					selected={ this.getSelected() }
 					toggleBulkManagement={ this.toggleBulkManagement }
@@ -374,7 +419,7 @@ export default React.createClass( {
 				errors={ this.state.notices.errors.filter( log => log.plugin && log.plugin.slug === plugin.slug ) }
 				notices={ this.state.notices }
 				isSelected={ this.isSelected( plugin ) }
-				isSelectable={ this.state.bulkManagement }
+				isSelectable={ this.state.bulkManagementActive }
 				onClick={ selectThisPlugin }
 				selectedSite={ this.props.selectedSite }
 				pluginLink={ '/plugins/' + encodeURIComponent( plugin.slug ) + this.siteSuffix() } />

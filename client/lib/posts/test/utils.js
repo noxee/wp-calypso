@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-var assert = require( 'better-assert' );
+import assert from 'assert';
 
 /**
 * Internal dependencies
@@ -15,6 +15,23 @@ describe( 'utils', function() {
 
 	before( () => {
 		postUtils = require( '../utils' );
+	} );
+
+	describe( '#getEditURL', function() {
+		it( 'should return correct path type=post is supplied', function() {
+			const url = postUtils.getEditURL( { ID: 123, type: 'post' }, { slug: 'en.blog.wordpress.com' } );
+			assert( url === '/post/en.blog.wordpress.com/123' );
+		} );
+
+		it( 'should return correct path type=page is supplied', function() {
+			const url = postUtils.getEditURL( { ID: 123, type: 'page' }, { slug: 'en.blog.wordpress.com' } );
+			assert( url === '/page/en.blog.wordpress.com/123' );
+		} );
+
+		it( 'should return correct path when custom post type is supplied', function() {
+			const url = postUtils.getEditURL( { ID: 123, type: 'jetpack-portfolio' }, { slug: 'en.blog.wordpress.com' } );
+			assert( url === '/edit/jetpack-portfolio/en.blog.wordpress.com/123' );
+		} );
 	} );
 
 	describe( '#getVisibility', function() {
@@ -64,6 +81,44 @@ describe( 'utils', function() {
 
 		it( 'should return false when post.status is not publish or private', function() {
 			assert( ! postUtils.isPublished( { status: 'draft' } ) );
+		} );
+	} );
+
+	describe( '#isPending', function() {
+		it( 'should return undefined when no post is supplied', function() {
+			assert( postUtils.isPending() === undefined );
+		} );
+
+		it( 'should return true when post.status is pending', function() {
+			assert( postUtils.isPending( { status: 'pending' } ) );
+		} );
+
+		it( 'should return false when post.status is not pending', function() {
+			assert( ! postUtils.isPending( { status: 'draft' } ) );
+		} );
+	} );
+
+	describe( '#isBackDatedPublished', function() {
+		it( 'should return false when no post is supplied', function() {
+			assert( ! postUtils.isBackDatedPublished() );
+		} );
+
+		it( 'should return false when status !== future', function() {
+			assert( ! postUtils.isBackDatedPublished( { status: 'draft' } ) );
+		} );
+
+		it( 'should return false when status === future and date is in future', function() {
+			const tenMinutes = 1000 * 60;
+			const postDate = Date.now() + tenMinutes;
+
+			assert( ! postUtils.isBackDatedPublished( { status: 'future', date: postDate } ) );
+		} );
+
+		it( 'should return true when status === future and date is in the past', function() {
+			const tenMinutes = 1000 * 60;
+			const postDate = Date.now() - tenMinutes;
+
+			assert( postUtils.isBackDatedPublished( { status: 'future', date: postDate } ) );
 		} );
 	} );
 

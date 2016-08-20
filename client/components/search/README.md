@@ -25,8 +25,11 @@ Use this prop to delay the `onSearch` callback until after the user has stopped 
 ### delayTimeout (optional) number ( default 300 )
 If `delaySearch` is true, this prop can be used to control the number of milliseconds used to determine when the user has stopped typing. It's a good idea to leave this at its default value unless there's a specific reason to change the timeout (e.g., a very expensive search may benefit from a longer timeout).
 
-### pinned (optional)
-Whether to display the search input from collapsed by default and pinned to the right of its container. If not set, the search input will show as already expanded.
+### pinned (optional) bool ( default false )
+Whether to display the search input from collapsed by default. If not set, the search input will show as already expanded.
+
+### fitsContainer (optional) bool ( default false )
+Position search absolutely, taking the height of the containing element and anchor to the right side.
 
 ### placeholder (optional)
 The label to place inside the search field if/when empty. Defaults to a translated version of "Search…".
@@ -39,6 +42,13 @@ This value is passed to the disabled attribute of the `<input>` element, and det
 
 ### searching (optional) bool ( default false )
 Whether to display a [`<Spinner />`](../spinner/) in place of the search icon.
+
+### dir (optional) string ( default undefined )
+Whether to force a specific writing direction for the search field, regardless of the current global writing direction. Useful for inputting domains, codes, etc that use LTR direction when in a RTL language.
+
+Currently supports forcing a LTR field in a RTL language, but not the other way around.
+
+Supported values are `'ltr'` and `undefined` (the default, which uses the current global writing direction of the app).
 
 ## Methods
 

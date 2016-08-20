@@ -1,4 +1,69 @@
 module.exports = {
+	// `browserNotifications` controls whether or not users see the
+	// nudge notice to enable browser notifications at the top of
+	// some Calypso screens; any users with this enabled will also
+	// have the preference available in /me/notifications;
+	// note: not renaming this test at this point in time so that we don't
+	// mess with any users that were put in the `enabled` variation -- don't
+	// want to take their browser notifications preference away from them!
+	browserNotifications: {
+		datestamp: '20160628',
+		variations: {
+			disabled: 95,
+			enabled: 5,
+		},
+		defaultVariation: 'disabled',
+		allowExistingUsers: true,
+	},
+	// `browserNotificationsPreferences` controls whether or not users see the
+	// preference to enable browser notifications in /me/notifications;
+	// any users with `browserNotifications` enabled will also see the preference;
+	// this is a temporary test just to allow us to ramp up the load gradually so
+	// that make sure things will be smooth when we go to launching browser
+	// notifications for 100% of users
+	browserNotificationsPreferences: {
+		datestamp: '20160801',
+		variations: {
+			disabled: 60,
+			enabled: 40,
+		},
+		defaultVariation: 'disabled',
+		allowExistingUsers: true,
+	},
+	coldStartReader: {
+		datestamp: '20160804',
+		variations: {
+			noEmailColdStart: 20,
+			noChanges: 80
+		},
+		defaultVariation: 'noChanges',
+		allowExistingUsers: false,
+	},
+	domainSuggestionVendor: {
+		datestamp: '20160614',
+		variations: {
+			namegen: 50,
+			domainsbot: 50
+		},
+		defaultVariation: 'namegen'
+	},
+	freeTrialNudgeOnThankYouPage: {
+		datestamp: '20200328',
+		variations: {
+			disabled: 50,
+			enabled: 50
+		},
+		defaultVariation: 'disabled'
+	},
+	freeTrialsInSignup: {
+		datestamp: '20200328',
+		variations: {
+			disabled: 40,
+			enabled: 15,
+			notTested: 45
+		},
+		defaultVariation: 'disabled'
+	},
 	multiDomainRegistrationV1: {
 		datestamp: '20200721',
 		variations: {
@@ -8,88 +73,31 @@ module.exports = {
 		},
 		defaultVariation: 'singlePurchaseFlow'
 	},
-	translatorInvitation: {
-		datestamp: '20150910',
+	signupStore: {
+		datestamp: '20160727',
 		variations: {
-			noNotice: 1,
-			startNow: 1,
-			helpUs: 1,
-			tryItNow: 1,
-			startTranslating: 1,
-			improve: 1
+			designTypeWithoutStore: 80,
+			designTypeWithStore: 20,
 		},
-		defaultVariation: 'noNotice',
-		allowAnyLocale: true
+		defaultVariation: 'designTypeWithoutStore',
+		allowExistingUsers: false,
 	},
-	freeTrialsInSignup: {
-		datestamp: '20160328',
+	firstView: {
+		datestamp: '20160726',
 		variations: {
-			disabled: 85,
-			enabled: 15
+			disabled: 60,
+			enabled: 40,
 		},
-		defaultVariation: 'disabled'
+		defaultVariation: 'disabled',
+		allowExistingUsers: false,
 	},
-	freeTrialNudgeOnThankYouPage: {
-		datestamp: '20160328',
+	readerSearchSuggestions: {
+		datestamp: '20160804',
 		variations: {
-			disabled: 50,
-			enabled: 50
+			staffSuggestions: 50,
+			popularSuggestions: 50
 		},
-		defaultVariation: 'disabled'
-	},
-	privacyCheckbox: {
-		datestamp: '20160310',
-		variations: {
-			original: 50,
-			checkbox: 50
-		},
-		defaultVariation: 'original'
-	},
-	domainSuggestionVendor: {
-		datestamp: '20160408',
-		variations: {
-			namegen: 75,
-			domainsbot: 25,
-		},
-		defaultVariation: 'namegen'
-	},
-	contextualGoogleAnalyticsNudge: {
-		datestamp: '20160409',
-		variations: {
-			drake: 25,
-			settingsDisabledPlans: 25,
-			settingsDisabledPlansCompare: 25,
-			settingsDisabledFeature: 25,
-		},
-		defaultVariation: 'drake',
-		allowExistingUsers: true,
-	},
-	swapButtonsMySiteSidebar: {
-		datestamp: '20160414',
-		variations: {
-			original: 50,
-			swap: 50
-		},
-		defaultVariation: 'original'
-	},
-	guidedTours: {
-		datestamp: '20160418',
-		variations: {
-			original: 96,
-			guided: 2,
-			calypsoOnly: 2,
-		},
-		defaultVariation: 'original',
-		allowExistingUsers: true,
-	},
-	domainCreditsInfoNotice: {
-		datestamp: '20160420',
-		variations: {
-			showNotice: 90,
-			original: 10
-		},
-		defaultVariation: 'showNotice',
-		allowExistingUsers: true,
-		allowAnyLocale: true
+		defaultVariation: 'staffSuggestions',
+		allowExistingUsers: true
 	}
 };

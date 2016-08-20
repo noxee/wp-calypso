@@ -6,13 +6,15 @@ import Helmet from 'react-helmet';
 import superagent from 'superagent';
 import Lru from 'lru-cache';
 import pick from 'lodash/pick';
+import debugFactory from 'debug';
 
 /**
  * Internal dependencies
  */
 import config from 'config';
 
-const markupCache = new Lru( { max: 1000 } );
+const debug = debugFactory( 'calypso:server-render' );
+const markupCache = new Lru( { max: 3000 } );
 
 function bumpStat( group, name ) {
 	const statUrl = `http://pixel.wp.com/g.gif?v=wpcom-no-pv&x_${ group }=${ name }&t=${ Math.random() }`;
@@ -33,10 +35,12 @@ function bumpStat( group, name ) {
 export function render( element, key = JSON.stringify( element ) ) {
 	try {
 		const startTime = Date.now();
+		debug( 'cache access for key', key );
 
 		let context = markupCache.get( key );
 		if ( ! context ) {
 			bumpStat( 'calypso-ssr', 'loggedout-design-cache-miss' );
+			debug( 'cache miss for key', key );
 			const renderedLayout = ReactDomServer.renderToString( element );
 			context = { renderedLayout };
 
@@ -51,11 +55,15 @@ export function render( element, key = JSON.stringify( element ) ) {
 			markupCache.set( key, context );
 		}
 		const rtsTimeMs = Date.now() - startTime;
+		debug( 'Server render time (ms)', rtsTimeMs );
 
 		if ( rtsTimeMs > 15 ) {
-			// We think that renderToString should generally
-			// never take more than 15ms. We're probably wrong.
+			// legacy stat from when we only had very simple server-renders
 			bumpStat( 'calypso-ssr', 'loggedout-design-over-15ms-rendertostring' );
+		}
+		if ( rtsTimeMs > 100 ) {
+			// Server renders should probably never take longer than 100ms
+			bumpStat( 'calypso-ssr', 'over-100ms-rendertostring' );
 		}
 
 		return context;
@@ -70,9 +78,16 @@ export function render( element, key = JSON.stringify( element ) ) {
 export function serverRender( req, res ) {
 	const context = req.context;
 
-	if ( config.isEnabled( 'server-side-rendering' ) && context.store && context.layout ) {
+	if ( context.lang !== config( 'i18n_default_locale_slug' ) ) {
+		context.i18nLocaleScript = '//widgets.wp.com/languages/calypso/' + context.lang + '.js';
+	}
+
+	if ( config.isEnabled( 'server-side-rendering' ) &&
+		context.store &&
+		context.layout &&
+		! context.user ) {
 		context.initialReduxState = pick( context.store.getState(), 'ui', 'themes' );
-		const key = JSON.stringify( context.layout ) + req.path + JSON.stringify( context.initialReduxState );
+		const key = context.renderCacheKey || JSON.stringify( context.layout );
 		Object.assign( context, render( context.layout, key ) );
 	}
 

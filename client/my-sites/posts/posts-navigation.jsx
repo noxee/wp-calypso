@@ -12,20 +12,15 @@ import NavTabs from 'components/section-nav/tabs';
 import NavSegmented from 'components/section-nav/segmented';
 import NavItem from 'components/section-nav/item';
 import Search from 'components/search';
-
 import URLSearch from 'lib/mixins/url-search';
 import PostCountsStore from 'lib/posts/post-counts-store';
+import Gravatar from 'components/gravatar';
+import userLib from 'lib/user';
 
-/**
- * Debug instance
- */
+const debug = new Debug( 'calypso:posts-navigation' );
+const user = userLib();
 
-var debug = new Debug( 'calypso:posts-navigation' );
-
-/**
- * Path converter
- */
-
+// Path converter
 const statusToDescription = {
 	publish: 'published',
 	draft: 'drafts',
@@ -102,7 +97,7 @@ export default React.createClass( {
 		};
 
 		this.filterScope = {
-			me: this.translate( 'Only Me', { context: 'Filter label for posts list' } ),
+			me: this.translate( 'Me', { context: 'Filter label for posts list' } ),
 			everyone: this.translate( 'Everyone', { context: 'Filter label for posts list' } )
 		};
 
@@ -133,7 +128,8 @@ export default React.createClass( {
 					authorSegmented.element : null
 				}
 				<Search
-					pinned={ true }
+					pinned
+					fitsContainer
 					onSearch={ this.doSearch }
 					initialValue={ this.props.search }
 					placeholder={ 'Search ' + statusTabs.selectedText + '...' }
@@ -150,7 +146,7 @@ export default React.createClass( {
 
 		for ( status in this.filterStatuses ) {
 			if ( 'undefined' === typeof this.state.counts[ status ] &&
-				( ! isJetpackSite ) ) {
+				( ! isJetpackSite ) && 'publish' !== status ) {
 				continue;
 			}
 
@@ -172,8 +168,13 @@ export default React.createClass( {
 				}
 			}
 
+			if ( 'publish' === status && ! count ) {
+				count = 0;
+			}
+
 			statusItems.push(
 				<NavItem
+					className={ 'is-' + status }
 					key={ 'statusTabs' + path }
 					path={ path }
 					count={ null === this.props.sites.selected || isJetpackSite ?
@@ -213,7 +214,8 @@ export default React.createClass( {
 
 		for ( scope in this.filterScope ) {
 			let textItem = this.filterScope[ scope ];
-			let path = ( 'me' === scope ? '/posts/my' : '/posts' ) + statusSlug + siteFilter;
+			const isMe = 'me' === scope;
+			let path = ( isMe ? '/posts/my' : '/posts' ) + statusSlug + siteFilter;
 
 			if ( path === this.props.context.pathname ) {
 				selectedText = textItem;
@@ -226,6 +228,7 @@ export default React.createClass( {
 					selected={ path === this.props.context.pathname }
 				>
 					{ textItem }
+					{ isMe && <Gravatar size={ 16 } user={ user.get() } /> }
 				</NavItem>
 			);
 		}

@@ -7,7 +7,7 @@ import { connect } from 'react-redux';
 import debugModule from 'debug';
 import page from 'page';
 import uniq from 'lodash/uniq';
-import config from 'config';
+import upperFirst from 'lodash/upperFirst';
 
 /**
  * Internal dependencies
@@ -28,7 +28,7 @@ import JetpackManageErrorPage from 'my-sites/jetpack-manage-error-page';
 import PluginSections from 'my-sites/plugins/plugin-sections';
 import pluginsAccessControl from 'my-sites/plugins/access-control';
 import EmptyContent from 'components/empty-content';
-import FeatureExample from 'components/feature-example'
+import FeatureExample from 'components/feature-example';
 import WpcomPluginsList from 'my-sites/plugins-wpcom/plugins-list';
 
 /**
@@ -36,13 +36,13 @@ import WpcomPluginsList from 'my-sites/plugins-wpcom/plugins-list';
  */
 const debug = debugModule( 'calypso:my-sites:plugin' );
 
-let _currentPageTitle = null;
-
 const SinglePlugin = React.createClass( {
 
 	displayName: 'SinglePlugin',
 
 	_DEFAULT_PLUGINS_BASE_PATH: 'http://wordpress.org/plugins/',
+
+	_currentPageTitle: null,
 
 	mixins: [ PluginNotices ],
 
@@ -116,13 +116,15 @@ const SinglePlugin = React.createClass( {
 
 	updatePageTitle() {
 		const pageTitle = this.state.plugin ? this.state.plugin.name : this.props.pluginSlug;
-		if ( _currentPageTitle === pageTitle ) {
+		if ( this._currentPageTitle === pageTitle ) {
 			return;
 		}
-		_currentPageTitle = pageTitle;
+
+		this._currentPageTitle = pageTitle;
 		this.pluginRefreshTimeout = setTimeout( () => {
-			this.props.onPluginRefresh( this.translate( '%(pluginName)s Plugin', {
-				args: { pluginName: _currentPageTitle },
+			this.props.onPluginRefresh( this.translate( '%(pluginName)s Plugin', '%(pluginName)s Plugins', {
+				count: pageTitle.toLowerCase() !== 'standard' | 0,
+				args: { pluginName: upperFirst( this._currentPageTitle ) },
 				textOnly: true,
 				context: 'Page title: Plugin detail'
 			} ) );
@@ -176,7 +178,7 @@ const SinglePlugin = React.createClass( {
 
 		const sites = this.props.sites.getSelectedOrAllWithPlugins() || [];
 
-		// If the plugin has at least one site then we know it exits
+		// If the plugin has at least one site then we know it exists
 		if ( plugin.sites && plugin.sites[0] ) {
 			return true;
 		}

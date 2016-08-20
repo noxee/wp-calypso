@@ -4,7 +4,6 @@
 var debug = require( 'debug' )( 'calypso:media' ),
 	assign = require( 'lodash/assign' ),
 	uniqueId = require( 'lodash/uniqueId' ),
-	isPlainObject = require( 'lodash/isPlainObject' ),
 	path = require( 'path' );
 
 /**
@@ -21,8 +20,9 @@ var Dispatcher = require( 'dispatcher' ),
 /**
  * Module variables
  */
-var MediaActions = {},
-	_fetching = {};
+const MediaActions = {
+	_fetching: {}
+};
 
 /**
  * Constants
@@ -39,11 +39,11 @@ MediaActions.setQuery = function( siteId, query ) {
 
 MediaActions.fetch = function( siteId, itemId ) {
 	var fetchKey = [ siteId, itemId ].join();
-	if ( _fetching[ fetchKey ] ) {
+	if ( MediaActions._fetching[ fetchKey ] ) {
 		return;
 	}
 
-	_fetching[ fetchKey ] = true;
+	MediaActions._fetching[ fetchKey ] = true;
 	Dispatcher.handleViewAction( {
 		type: 'FETCH_MEDIA_ITEM',
 		siteId: siteId,
@@ -59,7 +59,7 @@ MediaActions.fetch = function( siteId, itemId ) {
 			data: data
 		} );
 
-		delete _fetching[ fetchKey ];
+		delete MediaActions._fetching[ fetchKey ];
 	} );
 };
 
@@ -110,7 +110,7 @@ MediaActions.add = function( siteId, files ) {
 		const id = uniqueId( 'media-' );
 		const transientMedia = {
 			ID: id,
-			transient: true,
+			'transient': true,
 			// Assign a date such that the first item will be the oldest at the
 			// time of upload, as this is expected order when uploads finish
 			date: new Date( baseTime - ( files.length - i ) ).toISOString()
@@ -120,23 +120,29 @@ MediaActions.add = function( siteId, files ) {
 			// Generate from string
 			assign( transientMedia, {
 				file: file,
+				title: path.basename( file ),
 				extension: MediaUtils.getFileExtension( file ),
-				mime_type: MediaUtils.getMimeType( file ),
-				title: path.basename( file )
+				mime_type: MediaUtils.getMimeType( file )
 			} );
 		} else {
+			// Handle the case where a an object has been passed that wraps a
+			// Blob and contains a fileName
+			const fileContents = file.fileContents || file;
+			const fileName = file.fileName || file.name;
+
 			// Generate from window.File object
-			const fileUrl = window.URL.createObjectURL( file );
+			const fileUrl = window.URL.createObjectURL( fileContents );
+
 			assign( transientMedia, {
 				URL: fileUrl,
 				guid: fileUrl,
-				file: file.name,
-				extension: MediaUtils.getFileExtension( file.name ),
-				mime_type: MediaUtils.getMimeType( file.name ),
-				title: path.basename( file.name ),
+				file: fileName,
+				title: path.basename( fileName ),
+				extension: MediaUtils.getFileExtension( file.fileName || fileContents ),
+				mime_type: MediaUtils.getMimeType( file.fileName || fileContents ),
 				// Size is not an API media property, though can be useful for
 				// validation purposes if known
-				size: file.size
+				size: fileContents.size
 			} );
 		}
 
@@ -157,10 +163,16 @@ MediaActions.add = function( siteId, files ) {
 
 		// Assign parent ID if currently editing post
 		const post = PostEditStore.get();
-		if ( post && post.ID && ! isPlainObject( file ) ) {
+		if ( post && post.ID ) {
 			file = {
 				parent_id: post.ID,
 				[ isUrl ? 'url' : 'file' ]: file
+			};
+		} else if ( file.fileContents ) {
+			//if there's no parent_id, but the file object is wrapping a Blob
+			//(contains fileContents, fileName etc) still wrap it in a new object
+			file = {
+				file: file
 			};
 		}
 

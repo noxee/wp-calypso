@@ -7,12 +7,16 @@ import React, { PropTypes } from 'react';
  * Internal dependencies
  */
 import FoldableCard from 'components/foldable-card';
+import GuidedTransferInProgress from './guided-transfer-in-progress';
+import GuidedTransferOptions from 'my-sites/exporter/guided-transfer-options';
+import GuidedTransferDetails from 'my-sites/exporter/guided-transfer-details';
 import AdvancedSettings from 'my-sites/exporter/advanced-settings';
 import SpinnerButton from './spinner-button';
 import Interval, { EVERY_SECOND } from 'lib/interval';
 import Notice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action';
 import support from 'lib/url/support';
+import QuerySiteGuidedTransfer from 'components/data/query-site-guided-transfer';
 
 export default React.createClass( {
 	displayName: 'Exporter',
@@ -21,9 +25,11 @@ export default React.createClass( {
 		startExport: PropTypes.func.isRequired,
 		setPostType: PropTypes.func.isRequired,
 		advancedSettingsFetch: PropTypes.func.isRequired,
-
+		isGuidedTransferInProgress: PropTypes.bool,
+		showGuidedTransferOptions: PropTypes.bool,
 		shouldShowProgress: PropTypes.bool.isRequired,
 		postType: PropTypes.string,
+		siteSlug: PropTypes.string,
 		siteId: PropTypes.number
 	},
 
@@ -38,11 +44,20 @@ export default React.createClass( {
 	},
 
 	render: function() {
-		const { setPostType, startExport, exportStatusFetch } = this.props;
-		const { postType, shouldShowProgress, isExporting } = this.props;
+		const {
+			setPostType,
+			startExport,
+			exportStatusFetch,
+			postType,
+			shouldShowProgress,
+			isExporting,
+			isGuidedTransferInProgress,
+			showGuidedTransferOptions,
+		} = this.props;
 		const siteId = this.props.site.ID;
 
 		const exportAll = () => startExport( siteId );
+		const exportSelectedItems = () => startExport( siteId, { exportAll: false } );
 		const fetchStatus = () => exportStatusFetch( siteId );
 
 		const exportButton = (
@@ -55,7 +70,7 @@ export default React.createClass( {
 				loadingText={ this.translate( 'Exporting…' ) } />
 		);
 
-		var notice = null;
+		let notice = null;
 		if ( this.props.didComplete ) {
 			notice = (
 				<Notice
@@ -85,7 +100,9 @@ export default React.createClass( {
 
 		return (
 			<div className="exporter">
+				<QuerySiteGuidedTransfer siteId={ siteId } />
 				{ notice }
+				{ isGuidedTransferInProgress && <GuidedTransferInProgress /> }
 				<FoldableCard
 					actionButtonIcon="cog"
 					header={
@@ -100,14 +117,16 @@ export default React.createClass( {
 					}
 					summary={ exportButton }
 					expandedSummary={ exportButton }
-					>
+				>
 					<AdvancedSettings
 						postType={ postType }
 						shouldShowProgress={ shouldShowProgress }
 						onSelectPostType={ setPostType }
-						onClickExport={ startExport }
+						onClickExport={ exportSelectedItems }
 					/>
 				</FoldableCard>
+				{ showGuidedTransferOptions && <GuidedTransferOptions siteSlug={ this.props.siteSlug } /> }
+				{ showGuidedTransferOptions && <GuidedTransferDetails /> }
 				{ isExporting && <Interval onTick={ fetchStatus } period={ EVERY_SECOND } /> }
 			</div>
 		);

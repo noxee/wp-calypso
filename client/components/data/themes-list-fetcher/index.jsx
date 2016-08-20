@@ -16,6 +16,7 @@ import { hasSiteChanged, isJetpack } from 'state/themes/themes-last-query/select
 import { isLastPage, isFetchingNextPage, getThemesList, isFetchError } from 'state/themes/themes-list/selectors';
 import { getThemeById } from 'state/themes/themes/selectors';
 import { errorNotice } from 'state/notices/actions';
+import config from 'config';
 
 const ThemesListFetcher = React.createClass( {
 	propTypes: {
@@ -27,6 +28,7 @@ const ThemesListFetcher = React.createClass( {
 		isMultisite: React.PropTypes.bool,
 		search: React.PropTypes.string,
 		tier: React.PropTypes.string,
+		filter: React.PropTypes.string,
 		onRealScroll: React.PropTypes.func,
 		onLastPage: React.PropTypes.func,
 		// Connected props
@@ -51,13 +53,14 @@ const ThemesListFetcher = React.createClass( {
 			this.props.errorNotice( this.translate( 'There was a problem fetching the themes' ) );
 		}
 		if (
-				nextProps.tier !== this.props.tier || (
-					nextProps.search !== this.props.search && (
-						! nextProps.lastQuery.isJetpack ||
-						nextProps.lastQuery.hasSiteChanged
-						)
-					)
-			) {
+			nextProps.filter !== this.props.filter ||
+			nextProps.tier !== this.props.tier || (
+				nextProps.search !== this.props.search && (
+					! nextProps.lastQuery.isJetpack ||
+					nextProps.lastQuery.hasSiteChanged
+				)
+			)
+		) {
 			this.refresh( nextProps );
 		}
 	},
@@ -73,14 +76,16 @@ const ThemesListFetcher = React.createClass( {
 			onLastPage,
 			site,
 			search,
-			tier,
 		} = props;
 
 		this.onLastPage = onLastPage ? once( onLastPage ) : null;
 
+		const tier = config.isEnabled( 'upgrades/premium-themes' ) ? props.tier : 'free';
+
 		this.props.query( {
 			search,
 			tier,
+			filter: props.filter,
 			page: 0,
 			perPage: PER_PAGE,
 		} );

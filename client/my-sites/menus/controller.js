@@ -2,14 +2,15 @@
  * External Dependencies
  */
 var ReactDom = require( 'react-dom' ),
-	React = require( 'react' );
+	React = require( 'react'),
+	i18n = require( 'i18n-calypso' ),
+	ReactRedux = require( 'react-redux' );
 
 /**
  * Internal Dependencies
  */
 var sites = require( 'lib/sites-list' )(),
 	route = require( 'lib/route' ),
-	i18n = require( 'lib/mixins/i18n' ),
 	analytics = require( 'lib/analytics' ),
 	MainComponent = require( 'components/main' ),
 	JetpackManageErrorPage = require( 'my-sites/jetpack-manage-error-page' ),
@@ -65,12 +66,14 @@ var controller = {
 		analytics.pageView.record( baseAnalyticsPath, analyticsPageTitle );
 
 		ReactDom.render(
-			React.createElement( MenusComponent, {
-				siteMenus: siteMenus,
-				itemTypes: itemTypes,
-				key: siteMenus.siteID,
-				site: site
-			} ),
+			React.createElement( ReactRedux.Provider, { store: context.store },
+				React.createElement( MenusComponent, {
+					siteMenus: siteMenus,
+					itemTypes: itemTypes,
+					key: siteMenus.siteID,
+					site: site
+				} )
+			),
 			document.getElementById( 'primary' )
 		);
 	}

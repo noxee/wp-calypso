@@ -22,25 +22,20 @@ function cancelPrivateRegistration( siteName, purchaseId ) {
 	return managePurchase( siteName, purchaseId ) + '/cancel-private-registration';
 }
 
-function editCardDetails( siteName, purchaseId ) {
-	return editPaymentMethod( siteName, purchaseId ) + `/edit`;
+function addCardDetails( siteName, purchaseId ) {
+	return managePurchase( siteName, purchaseId ) + '/payment/edit';
 }
 
-function editSpecificCardDetails( siteName, purchaseId, cardId = ':cardId' ) {
-	return editPaymentMethod( siteName, purchaseId ) + `/edit/${ cardId }`;
-}
-
-function editPaymentMethod( siteName, purchaseId ) {
-	return managePurchase( siteName, purchaseId ) + '/payment';
+function editCardDetails( siteName, purchaseId, cardId = ':cardId' ) {
+	return addCardDetails( siteName, purchaseId ) + `/${ cardId }`;
 }
 
 export default {
+	addCardDetails,
 	cancelPrivateRegistration,
 	cancelPurchase,
 	confirmCancelDomain,
 	editCardDetails,
-	editPaymentMethod,
-	editSpecificCardDetails,
 	list,
 	listNotice,
 	managePurchase

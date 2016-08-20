@@ -4,10 +4,13 @@
 import React, { PropTypes } from 'react';
 import classnames from 'classnames';
 import { connect } from 'react-redux';
+import get from 'lodash/get';
+import { localize } from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
+import { resetEditorLastDraft } from 'state/ui/editor/last-draft/actions';
 import {
 	getEditorLastDraftPost,
 	getEditorLastDraftSiteId,
@@ -18,10 +21,10 @@ import { getEditorPath } from 'state/ui/editor/selectors';
 import { getSectionName } from 'state/ui/selectors';
 import { decodeEntities } from 'lib/formatting';
 import analytics from 'lib/analytics';
-import localize from 'lib/mixins/i18n/localize';
 import QueryPosts from 'components/data/query-posts';
 import SiteIcon from 'components/site-icon';
 import sitesList from 'lib/sites-list';
+import Dispatcher from 'dispatcher';
 
 /**
  * Module variables
@@ -37,6 +40,55 @@ const ResumeEditing = React.createClass( {
 		editPath: PropTypes.string,
 		section: PropTypes.string,
 		translate: PropTypes.func
+	},
+
+	componentWillReceiveProps( nextProps ) {
+		// Once we start tracking a draft, monitor received changes for that
+		// post to ensure we stop tracking if it's published or trashed
+		// [TODO]: This becomes obsolete when we no longer rely on Flux for
+		// tracking post data
+		const { draft } = nextProps;
+		if ( draft && ! this.dispatchToken ) {
+			this.dispatchToken = Dispatcher.register( this.maybeStopTrackingDraft );
+		} else if ( ! draft ) {
+			this.unregisterDispatcher();
+		}
+
+		// If draft status is known and is not "draft", then assume it was
+		// updated in global state and reset
+		if ( 'draft' !== get( draft, 'status', 'draft' ) ) {
+			nextProps.resetEditorLastDraft();
+		}
+	},
+
+	componentWillUnmount() {
+		this.unregisterDispatcher();
+	},
+
+	unregisterDispatcher() {
+		if ( ! this.dispatchToken ) {
+			return;
+		}
+
+		Dispatcher.unregister( this.dispatchToken );
+		delete this.dispatchToken;
+	},
+
+	maybeStopTrackingDraft( payload ) {
+		const { action } = payload;
+		if ( 'RECEIVE_UPDATED_POST' !== action.type ) {
+			return;
+		}
+
+		const { siteId, postId } = this.props;
+		const { post } = action;
+		if ( ! post || post.site_ID !== siteId || post.ID !== postId ) {
+			return;
+		}
+
+		if ( 'draft' !== post.status ) {
+			this.props.resetEditorLastDraft();
+		}
 	},
 
 	trackAnalytics() {
@@ -61,7 +113,7 @@ const ResumeEditing = React.createClass( {
 					{ translate( 'Continue Editing' ) }
 				</span>
 				<span className="resume-editing__post-title">
-					<SiteIcon size={ 14 } site={ sites.getSite( siteId ) } />
+					<SiteIcon size={ 16 } site={ sites.getSite( siteId ) } />
 					{ draft.title ? decodeEntities( draft.title ) : translate( 'Untitled' ) }
 				</span>
 			</a>
@@ -69,16 +121,19 @@ const ResumeEditing = React.createClass( {
 	}
 } );
 
-export default connect( ( state ) => {
-	const siteId = getEditorLastDraftSiteId( state );
-	const postId = getEditorLastDraftPostId( state );
+export default connect(
+	( state ) => {
+		const siteId = getEditorLastDraftSiteId( state );
+		const postId = getEditorLastDraftPostId( state );
 
-	return {
-		siteId,
-		postId,
-		requesting: isRequestingSitePost( state, siteId, postId ),
-		draft: getEditorLastDraftPost( state ),
-		editPath: getEditorPath( state, siteId, postId ),
-		section: getSectionName( state )
-	};
-} )( localize( ResumeEditing ) );
+		return {
+			siteId,
+			postId,
+			requesting: isRequestingSitePost( state, siteId, postId ),
+			draft: getEditorLastDraftPost( state ),
+			editPath: getEditorPath( state, siteId, postId ),
+			section: getSectionName( state )
+		};
+	},
+	{ resetEditorLastDraft }
+)( localize( ResumeEditing ) );

@@ -1,6 +1,6 @@
 const url = require( 'url' );
 
-const i18n = require( 'lib/mixins/i18n' ),
+const i18n = require( 'i18n-calypso' ),
 	SiteState = require( 'lib/reader-site-store/constants' ).state,
 	FeedDisplayHelper = require( 'reader/lib/feed-display-helper' );
 
@@ -47,15 +47,24 @@ function siteishFromSiteAndPost( site, post ) {
 	return {
 		title: '',
 		domain: ''
-	}
+	};
 }
 
 function isSpecialClick( event ) {
 	return event.button > 0 || event.metaKey || event.controlKey || event.shiftKey || event.altKey;
 }
 
+function isPostNotFound( post ) {
+	if ( post === undefined ) {
+		return false;
+	}
+
+	return post.statusCode === 404;
+}
+
 module.exports = {
 	siteNameFromSiteAndPost,
 	siteishFromSiteAndPost,
-	isSpecialClick
+	isSpecialClick,
+	isPostNotFound
 };

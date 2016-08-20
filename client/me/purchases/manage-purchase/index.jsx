@@ -2,6 +2,7 @@
  * External Dependencies
  */
 import classNames from 'classnames';
+import { connect } from 'react-redux';
 import page from 'page';
 import React from 'react';
 
@@ -35,22 +36,39 @@ import {
 	showCreditCardExpiringWarning
 } from 'lib/purchases';
 import { getPurchase, getSelectedSite, goToList, recordPageView } from '../utils';
+import { getByPurchaseId, hasLoadedUserPurchasesFromServer } from 'state/purchases/selectors';
+import { getSelectedSite as getSelectedSiteSelector } from 'state/ui/selectors';
 import HeaderCake from 'components/header-cake';
 import { isDomainRegistration } from 'lib/products-values';
+import { isRequestingSites } from 'state/sites/selectors';
 import Main from 'components/main';
 import Notice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action';
-import paths from '../paths';
 import PaymentLogo from 'components/payment-logo';
 import ProductLink from 'me/purchases/product-link';
+import QueryUserPurchases from 'components/data/query-user-purchases';
 import RemovePurchase from '../remove-purchase';
+import VerticalNavItem from 'components/vertical-nav/item';
+import paths from '../paths';
 import support from 'lib/url/support';
 import titles from 'me/purchases/titles';
-import VerticalNavItem from 'components/vertical-nav/item';
+import userFactory from 'lib/user';
 import * as upgradesActions from 'lib/upgrades/actions';
+
+const user = userFactory();
 
 function canEditPaymentDetails( purchase ) {
 	return config.isEnabled( 'upgrades/credit-cards' ) && ! isExpired( purchase ) && ! isOneTimePurchase( purchase ) && ! isIncludedWithPlan( purchase );
+}
+
+function getEditCardDetailsPath( site, purchase ) {
+	if ( isPaidWithCreditCard( purchase ) ) {
+		const { payment: { creditCard } } = purchase;
+
+		return paths.editCardDetails( site.slug, purchase.id, creditCard.id );
+	} else {
+		return paths.addCardDetails( site.slug, purchase.id );
+	}
 }
 
 /**
@@ -61,20 +79,20 @@ function canEditPaymentDetails( purchase ) {
  * @return {boolean} Whether or not the data is loading
  */
 function isDataLoading( props ) {
-	return ! props.hasLoadedSites || ! props.selectedPurchase.hasLoadedUserPurchasesFromServer;
+	return ! props.hasLoadedSites || ! props.hasLoadedUserPurchasesFromServer;
 }
 
 const ManagePurchase = React.createClass( {
 	propTypes: {
 		destinationType: React.PropTypes.string,
 		hasLoadedSites: React.PropTypes.bool.isRequired,
-		selectedPurchase: React.PropTypes.object.isRequired,
+		hasLoadedUserPurchasesFromServer: React.PropTypes.bool.isRequired,
+		selectedPurchase: React.PropTypes.object,
 		selectedSite: React.PropTypes.oneOfType( [
 			React.PropTypes.object,
 			React.PropTypes.bool,
 			React.PropTypes.undefined
-		] ),
-		user: React.PropTypes.object.isRequired
+		] )
 	},
 
 	componentWillMount() {
@@ -120,15 +138,18 @@ const ManagePurchase = React.createClass( {
 
 		return (
 			<div className="manage-purchase__contact-support">
-				{ this.translate( '{{strong}}Looking to renew?{{/strong}} Please {{contactSupportLink}}contact support{{/contactSupportLink}} to renew %(purchaseName)s.', {
-					args: {
-						purchaseName: getName( purchase )
-					},
-					components: {
-						strong: <strong />,
-						contactSupportLink: <a href={ support.CALYPSO_CONTACT } />
-					}
-				} ) }
+				{ this.translate( 'You are the owner of %(purchaseName)s but because you are no longer a user on %(siteSlug)s, ' +
+				'renewing it will require staff assistance. Please {{contactSupportLink}}contact support{{/contactSupportLink}}, ' +
+				'and consider transferring this purchase to another active user on %(siteSlug)s to avoid this issue in the future.',
+					{
+						args: {
+							purchaseName: getName( purchase ),
+							siteSlug: this.props.selectedPurchase.domain
+						},
+						components: {
+							contactSupportLink: <a href={ support.CALYPSO_CONTACT } />
+						}
+					} ) }
 			</div>
 		);
 	},
@@ -199,7 +220,7 @@ const ManagePurchase = React.createClass( {
 								},
 								components: {
 									a: canEditPaymentDetails( purchase )
-										? <a href={ paths.editCardDetails( this.props.selectedSite.slug, id, creditCard.id ) } />
+										? <a href={ getEditCardDetailsPath( this.props.selectedSite, purchase ) } />
 										: <span />
 								}
 							}
@@ -336,11 +357,9 @@ const ManagePurchase = React.createClass( {
 			);
 		}
 
-		const { id, payment: { creditCard } } = purchase;
-
 		return (
 			<li>
-				<a href={ paths.editCardDetails( this.props.selectedSite.slug, id, creditCard.id ) }>
+				<a href={ getEditCardDetailsPath( this.props.selectedSite, purchase ) }>
 					{ paymentDetails }
 				</a>
 			</li>
@@ -445,12 +464,12 @@ const ManagePurchase = React.createClass( {
 			);
 		}
 
-		if ( isRenewing( purchase ) ) {
-			return this.moment( purchase.renewDate ).format( 'LL' );
-		}
-
 		if ( isExpiring( purchase ) || isExpired( purchase ) || creditCardExpiresBeforeSubscription( purchase ) ) {
 			return this.moment( purchase.expiryDate ).format( 'LL' );
+		}
+
+		if ( isRenewing( purchase ) ) {
+			return this.moment( purchase.renewDate ).format( 'LL' );
 		}
 
 		if ( isOneTimePurchase( purchase ) ) {
@@ -459,23 +478,21 @@ const ManagePurchase = React.createClass( {
 	},
 
 	renderEditPaymentMethodNavItem() {
-		const purchase = getPurchase( this.props ),
-			{ id, payment } = purchase;
-
 		if ( ! getSelectedSite( this.props ) ) {
 			return null;
 		}
 
-		let path = paths.editCardDetails( this.props.selectedSite.slug, id );
-		if ( isPaidWithCreditCard( purchase ) ) {
-			path = paths.editSpecificCardDetails( this.props.selectedSite.slug, id, payment.creditCard.id );
-		}
+		const purchase = getPurchase( this.props );
 
 		if ( canEditPaymentDetails( purchase ) ) {
+			const path = getEditCardDetailsPath( this.props.selectedSite, purchase );
+
+			const text = isRenewing( purchase )
+				? this.translate( 'Edit Payment Method' )
+				: this.translate( 'Add Payment Method' );
+
 			return (
-				<CompactCard href={ path }>
-					{ this.translate( 'Edit Payment Method' ) }
-				</CompactCard>
+				<CompactCard href={ path }>{ text }</CompactCard>
 			);
 		}
 
@@ -623,9 +640,10 @@ const ManagePurchase = React.createClass( {
 
 				<RemovePurchase
 					hasLoadedSites={ this.props.hasLoadedSites }
+					hasLoadedUserPurchasesFromServer={ this.props.hasLoadedUserPurchasesFromServer }
 					selectedSite={ this.props.selectedSite }
 					selectedPurchase={ this.props.selectedPurchase }
-					user={ this.props.user } />
+				/>
 			</div>
 		);
 	},
@@ -637,6 +655,7 @@ const ManagePurchase = React.createClass( {
 
 		return (
 			<span>
+				<QueryUserPurchases userId={ user.get().ID } />
 				<Main className="manage-purchase">
 					<HeaderCake onClick={ goToList }>
 						{ titles.managePurchase }
@@ -649,4 +668,11 @@ const ManagePurchase = React.createClass( {
 	}
 } );
 
-export default ManagePurchase;
+export default connect(
+	( state, props ) => ( {
+		hasLoadedSites: ! isRequestingSites( state ),
+		hasLoadedUserPurchasesFromServer: hasLoadedUserPurchasesFromServer( state ),
+		selectedPurchase: getByPurchaseId( state, props.purchaseId ),
+		selectedSite: getSelectedSiteSelector( state )
+	} )
+)( ManagePurchase );

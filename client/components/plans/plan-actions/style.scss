@@ -8,6 +8,10 @@
 		&.is-image-button {
 			padding: 0;
 		}
+
+		.plan-actions__upgrade-button {
+			margin-top: 20px;
+		}
 	}
 
 	.plan-actions__action-details {
@@ -114,8 +118,8 @@
 	}
 }
 .plan-actions__illustration {
-	width: 100px;
-	height: 100px;
+	width: 70px;
+	height: 70px;
 	margin: 5px auto 10px auto;
 	background-size: 100%;
 	border-radius: 50%;
@@ -126,11 +130,25 @@
 .jetpack_free.plan-actions__illustration {
 	background-image: url('/calypso/images/plans/plan-beginner.svg');
 }
+
+.plans.has-personal-plan, .main.has-personal-plan {
+	.free_plan.plan-actions__illustration,
+	.jetpack_free.plan-actions__illustration {
+		margin-top: 23px;
+	}
+}
+
+.personal-bundle.plan-actions__illustration {
+	background-image: url('/calypso/images/plans/plan-personal.svg');
+}
+
 .value_bundle.plan-actions__illustration,
-.jetpack_premium.plan-actions__illustration {
+.jetpack_premium.plan-actions__illustration,
+.jetpack_premium_monthly.plan-actions__illustration {
 	background-image: url('/calypso/images/plans/plan-premium.svg');
 }
 .business-bundle.plan-actions__illustration,
-.jetpack_business.plan-actions__illustration {
+.jetpack_business.plan-actions__illustration,
+.jetpack_business_monthly.plan-actions__illustration {
 	background-image: url('/calypso/images/plans/plan-business.svg');
 }

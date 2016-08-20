@@ -270,6 +270,13 @@
 	.is-selected & {
 		color: $white;
 		background-color: $blue-medium;
+
+		@include breakpoint( "<480px" ) {
+			.count {
+				color: $white;
+				border-color: $white;
+			}
+		}
 	}
 
 	&:focus {
@@ -370,7 +377,7 @@
 // -------- Search --------
 .section-nav {
 	@include breakpoint( "<480px" ) {
-		.search.is-pinned {
+		.search.is-expanded-to-container {
 			height: 46px;
 		}
 	}

@@ -16,21 +16,19 @@ import property from 'lodash/property';
 import {
 	THEME_ACTIVATE,
 	THEME_ACTIVATED,
+	THEME_BACK_PATH_SET,
 	THEME_CLEAR_ACTIVATED,
-	THEME_CUSTOMIZE,
 	THEME_DETAILS_RECEIVE,
-	THEME_DETAILS,
-	THEME_PREVIEW,
+	THEME_DETAILS_RECEIVE_FAILURE,
 	THEME_PURCHASE,
 	THEME_RECEIVE_CURRENT,
-	THEME_SIGNUP_WITH,
-	THEME_SUPPORT,
+	THEME_REQUEST_CURRENT,
+	THEME_REQUEST_CURRENT_FAILURE,
 	THEMES_INCREMENT_PAGE,
 	THEMES_QUERY,
 	THEMES_RECEIVE,
 	THEMES_RECEIVE_SERVER_ERROR,
 } from '../action-types';
-import ThemeHelpers from 'my-sites/themes/helpers';
 import { getCurrentTheme } from './current-theme/selectors';
 import {
 	recordTracksEvent,
@@ -54,14 +52,14 @@ export function fetchThemes( site ) {
 				dispatch( receiveThemes( themes, site, queryParams, responseTime ) );
 			} )
 			.catch( error => receiveServerError( error ) );
-	}
+	};
 }
 
 export function fetchNextPage( site ) {
 	return dispatch => {
 		dispatch( incrementThemesPage( site ) );
 		dispatch( fetchThemes( site ) );
-	}
+	};
 }
 
 export function query( params ) {
@@ -75,36 +73,47 @@ export function incrementThemesPage( site ) {
 	return {
 		type: THEMES_INCREMENT_PAGE,
 		site: site
-	}
+	};
 }
 
-export function fetchCurrentTheme( site ) {
+export function fetchCurrentTheme( siteId ) {
 	return dispatch => {
-		wpcom.undocumented().activeTheme( site.ID )
+		dispatch( {
+			type: THEME_REQUEST_CURRENT,
+			siteId,
+		} );
+
+		wpcom.undocumented().activeTheme( siteId )
 			.then( theme => {
 				debug( 'Received current theme', theme );
 				dispatch( {
 					type: THEME_RECEIVE_CURRENT,
-					site: site,
+					siteId,
 					themeId: theme.id,
 					themeName: theme.name,
 					themeCost: theme.cost
-				} )
-			} ); // TODO: add .catch() error handler
+				} );
+			} ).catch( error => {
+				dispatch( {
+					type: THEME_REQUEST_CURRENT_FAILURE,
+					siteId,
+					error,
+				} );
+			} );
 	};
 }
 
-export function fetchThemeDetails( id ) {
+export function fetchThemeDetails( id, site ) {
 	return dispatch => {
-		wpcom.undocumented().themeDetails( id )
+		wpcom.undocumented().themeDetails( id, site )
 			.then( themeDetails => {
 				debug( 'Received theme details', themeDetails );
-				dispatch( receiveThemeDetails( themeDetails ) )
+				dispatch( receiveThemeDetails( themeDetails ) );
 			} )
 			.catch( error => {
-				dispatch( receiveServerError( error ) )
+				dispatch( receiveThemeDetailsFailure( id, error ) );
 			} );
-	}
+	};
 }
 
 export function receiveThemeDetails( theme ) {
@@ -113,14 +122,29 @@ export function receiveThemeDetails( theme ) {
 		themeId: theme.id,
 		themeName: theme.name,
 		themeAuthor: theme.author,
-		themePrice: theme.price ? theme.price.display : undefined,
+		themePrice: theme.price,
 		themeScreenshot: theme.screenshot,
+		themeScreenshots: theme.screenshots,
 		themeDescription: theme.description,
 		themeDescriptionLong: theme.description_long,
-		themeSupportDocumentation: theme.extended ? theme.extended.support_documentation : undefined,
+		themeSupportDocumentation: theme.support_documentation || undefined,
+		themeDownload: theme.download_uri || undefined,
 		themeTaxonomies: theme.taxonomies,
+		themeStylesheet: theme.stylesheet,
+		themeDemoUri: theme.demo_uri,
+		themeActive: theme.active,
+		themePurchased: theme.purchased,
 	};
-};
+}
+
+export function receiveThemeDetailsFailure( id, error ) {
+	debug( `Received error for theme ${ id }:`, error );
+	return {
+		type: THEME_DETAILS_RECEIVE_FAILURE,
+		themeId: id,
+		error: error,
+	};
+}
 
 export function receiveServerError( error ) {
 	return {
@@ -162,7 +186,7 @@ export function receiveThemes( data, site, queryParams, responseTime ) {
 			: themeAction;
 
 		dispatch( action );
-	}
+	};
 }
 
 export function activate( theme, site, source = 'unknown' ) {
@@ -180,7 +204,7 @@ export function activate( theme, site, source = 'unknown' ) {
 			.catch( error => {
 				dispatch( receiveServerError( error ) );
 			} );
-	}
+	};
 }
 
 export function activated( theme, site, source = 'unknown', purchased = false ) {
@@ -192,103 +216,33 @@ export function activated( theme, site, source = 'unknown', purchased = false ) 
 			theme = getThemeById( getState(), theme );
 		}
 
-		defer( () => {
-			const action = {
-				type: THEME_ACTIVATED,
-				theme,
-				site
-			};
+		const action = {
+			type: THEME_ACTIVATED,
+			theme,
+			site,
+			siteId: site.ID
+		};
 
-			const trackThemeActivation = recordTracksEvent(
-				'calypso_themeshowcase_theme_activate',
-				{
-					theme: theme.id,
-					previous_theme: previousTheme.id,
-					source: source,
-					purchased: purchased,
-					search_term: queryParams.get( 'search' ) || null
-				}
-			);
+		const trackThemeActivation = recordTracksEvent(
+			'calypso_themeshowcase_theme_activate',
+			{
+				theme: theme.id,
+				previous_theme: previousTheme.id,
+				source: source,
+				purchased: purchased,
+				search_term: queryParams.get( 'search' ) || null
+			}
+		);
 
-			dispatch( withAnalytics( trackThemeActivation, action ) );
-		} );
-	}
-};
+		dispatch( withAnalytics( trackThemeActivation, action ) );
+	};
+}
 
 export function clearActivated() {
 	return {
 		type: THEME_CLEAR_ACTIVATED
 	};
-};
-
-export function signup( theme ) {
-	return dispatch => {
-		const signupUrl = ThemeHelpers.getSignupUrl( theme );
-
-		dispatch( {
-			type: THEME_SIGNUP_WITH,
-			theme
-		} );
-
-		// `ThemeHelpers.navigateTo` uses `page()` here, which messes with `pushState`,
-		// which we don't want here, since we're navigating away from Calypso.
-		window.location = signupUrl;
-	}
 }
-
-// Might be obsolete, since in my-sites/themes, we're using `getUrl()` for Details
-export function details( theme, site ) {
-	return dispatch => {
-		const detailsUrl = ThemeHelpers.getDetailsUrl( theme, site );
-
-		dispatch( {
-			type: THEME_DETAILS,
-			theme: theme
-		} );
-
-		ThemeHelpers.navigateTo( detailsUrl, site.jetpack );
-	}
-};
-
-// Might be obsolete, since in my-sites/themes, we're using `getUrl()` for Support
-export function support( theme, site ) {
-	return dispatch => {
-		const supportUrl = ThemeHelpers.getSupportUrl( theme, site );
-
-		dispatch( {
-			type: THEME_SUPPORT,
-			theme: theme
-		} );
-
-		ThemeHelpers.navigateTo( supportUrl, site.jetpack );
-	}
-};
-
-export function preview( theme, site ) {
-	return dispatch => {
-		const previewUrl = ThemeHelpers.getPreviewUrl( theme, site );
-
-		dispatch( {
-			type: THEME_PREVIEW,
-			site: site
-		} );
-
-		ThemeHelpers.navigateTo( previewUrl, site.jetpack );
-	}
-}
-
-export function customize( theme, site ) {
-	return dispatch => {
-		const customizeUrl = ThemeHelpers.getCustomizeUrl( theme, site );
-
-		dispatch( {
-			type: THEME_CUSTOMIZE,
-			site: site.id
-		} );
-
-		ThemeHelpers.navigateTo( customizeUrl, site.jetpack );
-	}
-};
 
 export function purchase( theme, site, source = 'unknown' ) {
 	const CartActions = require( 'lib/upgrades/actions' );
@@ -306,5 +260,13 @@ export function purchase( theme, site, source = 'unknown' ) {
 				site: site
 			} );
 		} );
-	}
+	};
+}
+
+// Set destination for 'back' button on theme sheet
+export function setBackPath( path ) {
+	return {
+		type: THEME_BACK_PATH_SET,
+		path: path,
+	};
 }

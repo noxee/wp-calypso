@@ -4,7 +4,8 @@
  * External dependencies
  */
 var webpack = require( 'webpack' ),
-	path = require( 'path' );
+	path = require( 'path' ),
+	config = require( 'config' );
 
 /**
  * Internal dependencies
@@ -24,8 +25,10 @@ var CALYPSO_ENV = process.env.CALYPSO_ENV || 'development',
 const sectionCount = sections.length;
 
 webpackConfig = {
+	bail: CALYPSO_ENV !== 'development',
 	cache: true,
 	entry: {},
+	devtool: '#eval',
 	output: {
 		path: path.join( __dirname, 'public' ),
 		publicPath: '/calypso/',
@@ -33,7 +36,6 @@ webpackConfig = {
 		chunkFilename: '[name].[chunkhash].js',
 		devtoolModuleFilenameTemplate: 'app:///[resource-path]'
 	},
-	devtool: '#eval',
 	module: {
 		loaders: [
 			{
@@ -62,7 +64,10 @@ webpackConfig = {
 	resolve: {
 		extensions: [ '', '.json', '.js', '.jsx' ],
 		root: [ path.join( __dirname, 'client' ) ],
-		modulesDirectories: [ 'node_modules' ]
+		modulesDirectories: [ 'node_modules' ],
+		alias: {
+			'react-virtualized': 'react-virtualized/dist/commonjs'
+		}
 	},
 	resolveLoader: {
 		root: [ __dirname ]
@@ -83,8 +88,7 @@ webpackConfig = {
 			}
 		} ),
 		new webpack.optimize.OccurenceOrderPlugin( true ),
-		new webpack.IgnorePlugin( /^props$/ ),
-		new webpack.IgnorePlugin( /^\.\/locale$/, /moment$/ )
+		new webpack.IgnorePlugin( /^props$/ )
 	],
 	externals: [ 'electron' ]
 };
@@ -97,7 +101,8 @@ if ( CALYPSO_ENV === 'desktop' || CALYPSO_ENV === 'desktop-mac-app-store' ) {
 	webpackConfig.plugins.push( new webpack.optimize.CommonsChunkPlugin( {
 		children: true,
 		minChunks: Math.floor( sectionCount * 0.25 ),
-		async: true
+		async: true,
+		filename: 'commons.[hash].js'
 	} ) );
 	webpackConfig.plugins.push( new ChunkFileNamePlugin() );
 	// jquery is only needed in the build for the desktop app
@@ -108,7 +113,7 @@ if ( CALYPSO_ENV === 'desktop' || CALYPSO_ENV === 'desktop-mac-app-store' ) {
 jsLoader = {
 	test: /\.jsx?$/,
 	exclude: /node_modules/,
-	loaders: [ 'babel-loader?cacheDirectory&optional[]=runtime' ]
+	loaders: [ 'babel-loader?cacheDirectory' ]
 };
 
 if ( CALYPSO_ENV === 'development' ) {
@@ -120,10 +125,22 @@ if ( CALYPSO_ENV === 'development' ) {
 		path.join( __dirname, 'client', 'boot' )
 	];
 
-	// Add react hot loader before babel-loader
-	jsLoader.loaders = [ 'react-hot' ].concat( jsLoader.loaders );
+	if ( config.isEnabled( 'use-source-maps' ) ) {
+		webpackConfig.debug = true;
+		webpackConfig.devtool = '#eval-cheap-module-source-map';
+		webpackConfig.module.preLoaders = webpackConfig.module.preLoaders || [];
+		webpackConfig.module.preLoaders.push( {
+			test: /\.jsx?$/,
+			loader: 'source-map-loader'
+		} );
+	} else {
+		// Add react hot loader before babel-loader.
+		// It's loaded by default since `use-source-maps` is disabled by default.
+		jsLoader.loaders = [ 'react-hot' ].concat( jsLoader.loaders );
+	}
 } else {
 	webpackConfig.entry[ 'build-' + CALYPSO_ENV ] = path.join( __dirname, 'client', 'boot' );
+	webpackConfig.debug = false;
 	webpackConfig.devtool = false;
 }
 

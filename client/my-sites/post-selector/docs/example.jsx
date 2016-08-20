@@ -27,7 +27,7 @@ const PostSelectorExample = React.createClass( {
 		return (
 			<div className="design-assets__group">
 				<h2>
-					<a href="/devdocs/app-components/post-selector">Post Selector</a>
+					<a href="/devdocs/blocks/post-selector">Post Selector</a>
 				</h2>
 				<div style={ { width: 300 } }>
 					<FormLabel>
@@ -35,7 +35,7 @@ const PostSelectorExample = React.createClass( {
 							type="checkbox"
 							checked={ this.state.showTypeLabels }
 							onChange={ () => this.setState( { showTypeLabels: ! this.state.showTypeLabels } ) } />
-						Show Type Labels
+						<span>Show Type Labels</span>
 					</FormLabel>
 					{ this.props.sites.initialized && (
 						<PostSelector

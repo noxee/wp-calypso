@@ -10,7 +10,9 @@ Just [file a GitHub issue](https://github.com/Automattic/wp-calypso/issues/), th
 
 If you’re filing a bug, specific steps to reproduce are helpful. Please include the URL of the page that has the bug, along with what you expected to see and what happened instead.
 
-Here is a [handy link for submitting a new bug](https://github.com/Automattic/wp-calypso/issues/new?body=URL%3A%0A%0AWhat+I+expected%3A%0A%0AWhat+happened+instead%3A%0A%0ASteps+to+reproduce%3A%0A%0ABrowser%20OS%20version%3A%0A%0AScreenshots/Video%3A&title=Feature:%20description%20of%20the%20problem&labels%5B%5D=%5BType%5D%20Bug).
+Here is a [handy link for submitting a new bug](https://github.com/Automattic/wp-calypso/issues/new?labels%5B%5D=%5BType%5D%20Bug).
+
+Feel free to share your unique context to help us understand your perspective. You can add context tags such as: `#journey` `#anecdote` `#narrative` `#context` `#empathy` `#perspective` `#reallife` `#dogfooding` `#livesharing` `#flowsharing` `#anxiety` `#anxiety-flow` `#stresscase` `#painpoint`. We'd also love to know how you found the bug: `#dogfooding`, `#manual-testing`, `#automated-testing`, or `#user-report` if applicable.
 
 ## Installing Calypso Locally
 
@@ -88,7 +90,7 @@ Consistent coding style makes the code so much easier to read. Here are ours:
 	- [CSS/SASS](/docs/coding-guidelines/css.md)
 	- [HTML](/docs/coding-guidelines/html.md)
 	- [React Components](/docs/components.md)
-* [I18n Guidelines »](/client/lib/mixins/i18n/README.md)
+* [I18n Guidelines »](https://github.com/Automattic/i18n-calypso/blob/master/README.md)
 
 
 ### Lifecycle of a Pull Request

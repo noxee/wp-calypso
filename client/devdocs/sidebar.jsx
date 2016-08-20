@@ -21,7 +21,9 @@ export default React.createClass( {
 	render() {
 		return (
 			<Sidebar>
-				<h1 className="devdocs__title">Calypso Docs</h1>
+				<a href="/devdocs">
+					<h1 className="devdocs__title">Calypso Docs</h1>
+				</a>
 				<SidebarMenu>
 					<ul>
 						<SidebarItem
@@ -60,9 +62,9 @@ export default React.createClass( {
 						<SidebarItem
 							className="devdocs__navigation-item"
 							icon="custom-post-type"
-							label="App Components"
-							link="/devdocs/app-components"
-							selected={ '/devdocs/app-components' === this.props.path }
+							label="Blocks"
+							link="/devdocs/blocks"
+							selected={ '/devdocs/blocks' === this.props.path }
 						/>
 						<SidebarItem
 							className="devdocs__navigation-item"

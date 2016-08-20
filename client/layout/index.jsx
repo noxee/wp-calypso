@@ -2,6 +2,7 @@
  * External dependencies
  */
 var React = require( 'react' ),
+	connect = require( 'react-redux' ).connect,
 	classnames = require( 'classnames' ),
 	property = require( 'lodash/property' ),
 	sortBy = require( 'lodash/sortBy' );
@@ -10,7 +11,7 @@ var React = require( 'react' ),
  * Internal dependencies
  */
 var MasterbarLoggedIn = require( 'layout/masterbar/logged-in' ),
-	MasterbarMinimal = require( 'layout/masterbar/minimal' ),
+	MasterbarLoggedOut = require( 'layout/masterbar/logged-out' ),
 	observe = require( 'lib/mixins/data-observe' ),
 	GlobalNotices = require( 'components/global-notices' ),
 	notices = require( 'notices' ),
@@ -19,23 +20,25 @@ var MasterbarLoggedIn = require( 'layout/masterbar/logged-in' ),
 	TranslatorLauncher = require( './community-translator/launcher' ),
 	PollInvitation = require( './poll-invitation' ),
 	PreferencesData = require( 'components/data/preferences-data' ),
-	EmailVerificationNotice = require( 'components/email-verification/email-verification-notice' ),
+	PushNotificationPrompt = require( 'components/push-notification/prompt' ),
 	Welcome = require( 'my-sites/welcome/welcome' ),
 	WelcomeMessage = require( 'layout/nux-welcome/welcome-message' ),
-	GuidesTours = require( 'guidestours' ),
+	GuidedTours = require( 'layout/guided-tours' ),
 	analytics = require( 'lib/analytics' ),
 	config = require( 'config' ),
-	connect = require( 'react-redux' ).connect,
+	abtest = require( 'lib/abtest' ).abtest,
 	PulsingDot = require( 'components/pulsing-dot' ),
 	SitesListNotices = require( 'lib/sites-list/notices' ),
 	OfflineStatus = require( 'layout/offline-status' ),
 	PollerPool = require( 'lib/data-poller' ),
+	QueryPreferences = require( 'components/data/query-preferences' ),
 	KeyboardShortcutsMenu,
 	Layout,
 	SupportUser;
 
 import { isOffline } from 'state/application/selectors';
-import { getGuidesTourState } from 'state/ui/selectors';
+import { hasSidebar } from 'state/ui/selectors';
+import DesignPreview from 'my-sites/design-preview';
 
 if ( config.isEnabled( 'keyboard-shortcuts' ) ) {
 	KeyboardShortcutsMenu = require( 'lib/keyboard-shortcuts/menu' );
@@ -88,12 +91,17 @@ Layout = React.createClass( {
 		return sortBy( this.props.sites.get(), property( 'ID' ) ).pop();
 	},
 
-	renderEmailVerificationNotice: function() {
+	renderPushNotificationPrompt: function() {
+		const participantInAbTest = config.isEnabled( 'push-notifications-ab-test' ) && abtest( 'browserNotifications' ) === 'enabled';
+		if ( ! config.isEnabled( 'push-notifications' ) && ! participantInAbTest ) {
+			return null;
+		}
+
 		if ( ! this.props.user ) {
 			return null;
 		}
 
-		return <EmailVerificationNotice user={ this.props.user } />;
+		return <PushNotificationPrompt user={ this.props.user } section={ this.props.section } isLoading={ this.props.isLoading } />;
 	},
 
 	renderMasterbar: function() {
@@ -102,7 +110,7 @@ Layout = React.createClass( {
 		}
 
 		if ( ! this.props.user ) {
-			return <MasterbarMinimal url="/" />;
+			return <MasterbarLoggedOut showSignup={ 'signup' !== this.props.section.name } />;
 		}
 
 		return (
@@ -114,22 +122,18 @@ Layout = React.createClass( {
 	},
 
 	renderWelcome: function() {
-		var translatorInvitation = this.props.translatorInvitation,
-			showInvitation,
-			showWelcome,
-			newestSite,
-			disablePollInvitation;
+		const translatorInvitation = this.props.translatorInvitation;
 
 		if ( ! this.props.user ) {
 			return null;
 		}
 
-		showWelcome = this.props.nuxWelcome.getWelcome();
-		newestSite = this.newestSite();
-		showInvitation = ! showWelcome &&
+		const showWelcome = this.props.nuxWelcome.getWelcome();
+		const newestSite = this.newestSite();
+		const showInvitation = ! showWelcome &&
 				translatorInvitation.isPending() &&
 				translatorInvitation.isValidSection( this.props.section.name );
-		disablePollInvitation = showWelcome || showInvitation;
+		const disablePollInvitation = showWelcome || showInvitation;
 
 		return (
 			<span>
@@ -144,15 +148,26 @@ Layout = React.createClass( {
 		);
 	},
 
+	renderPreview() {
+		if ( config.isEnabled( 'preview-layout' ) && this.props.section.group === 'sites' ) {
+			return (
+				<DesignPreview
+					className="layout__preview"
+					showPreview={ this.props.focus.getCurrent() === 'preview' }
+					defaultViewportDevice="computer"
+				/>
+			);
+		}
+	},
+
 	render: function() {
-		var sectionClass = classnames(
-				'wp',
+		const sectionClass = classnames(
 				'layout',
 				`is-group-${this.props.section.group}`,
 				`is-section-${this.props.section.name}`,
 				`focus-${this.props.focus.getCurrent()}`,
 				{ 'is-support-user': this.props.isSupportUser },
-				{ 'has-no-sidebar': ! this.props.section.secondary }
+				{ 'has-no-sidebar': ! this.props.hasSidebar }
 			),
 			loadingClass = classnames( {
 				layout__loader: true,
@@ -161,23 +176,25 @@ Layout = React.createClass( {
 
 		return (
 			<div className={ sectionClass }>
-				{ config.isEnabled( 'guidestours' ) && this.props.tourState.shouldShow ? <GuidesTours /> : null }
+				<QueryPreferences />
+				{ config.isEnabled( 'guided-tours' ) ? <GuidedTours /> : null }
 				{ config.isEnabled( 'keyboard-shortcuts' ) ? <KeyboardShortcutsMenu /> : null }
 				{ this.renderMasterbar() }
 				{ config.isEnabled( 'support-user' ) && <SupportUser /> }
 				<div className={ loadingClass } ><PulsingDot active={ this.props.isLoading } chunkName={ this.props.section.name } /></div>
 				{ this.props.isOffline && <OfflineStatus /> }
-				<div id="content" className="wp-content">
+				<div id="content" className="layout__content">
 					{ this.renderWelcome() }
-					{ this.renderEmailVerificationNotice() }
+					{ this.renderPushNotificationPrompt() }
 					<GlobalNotices id="notices" notices={ notices.list } forcePinned={ 'post' === this.props.section.name } />
-					<div id="primary" className="wp-primary wp-section" />
-					<div id="secondary" className="wp-secondary" />
+					<div id="primary" className="layout__primary" />
+					<div id="secondary" className="layout__secondary" />
 				</div>
 				<div id="tertiary" />
 				<TranslatorLauncher
 					isEnabled={ translator.isEnabled() }
 					isActive={ translator.isActivated() }/>
+				{ this.renderPreview() }
 			</div>
 		);
 	}
@@ -190,8 +207,8 @@ export default connect(
 			isLoading,
 			isSupportUser: state.support.isSupportUser,
 			section,
+			hasSidebar: hasSidebar( state ),
 			isOffline: isOffline( state ),
-			tourState: getGuidesTourState( state ),
 		};
 	}
 )( Layout );

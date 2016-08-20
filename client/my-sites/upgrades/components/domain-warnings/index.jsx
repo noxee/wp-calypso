@@ -11,9 +11,9 @@ import intersection from 'lodash/intersection';
  **/
 import Notice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action';
+import PendingGappsTosNotice from './pending-gapps-tos-notice';
 import purchasesPaths from 'me/purchases/paths';
 import domainConstants from 'lib/domains/constants';
-import i18n from 'lib/mixins/i18n';
 import support from 'lib/url/support';
 import paths from 'my-sites/upgrades/paths';
 
@@ -22,9 +22,7 @@ const debug = _debug( 'calypso:domain-warnings' );
 
 const allAboutDomainsLink = <a href={ support.ALL_ABOUT_DOMAINS } target="_blank"/>,
 	domainsLink = <a href={ support.DOMAINS } target="_blank" />,
-	pNode = <p />,
-	renewLinkSingle = <a href={ purchasesPaths.list() }>{ i18n.translate( 'Renew it now.', { context: 'Call to action link for renewing an expiring/expired domain' } ) }</a>,
-	renewLinkPlural = <a href={ purchasesPaths.list() }>{ i18n.translate( 'Renew them now.', { context: 'Call to action link for renewing an expiring/expired domain' } ) }</a>;
+	pNode = <p />;
 
 export default React.createClass( {
 	displayName: 'DomainWarnings',
@@ -38,20 +36,36 @@ export default React.createClass( {
 		] ).isRequired
 	},
 
+	renewLink( count ) {
+		return (
+			<a href={ purchasesPaths.list() }>
+				{ this.translate(
+					'Renew it now.',
+					'Renew them now.',
+					{
+						count,
+						context: 'Call to action link for renewing an expiring/expired domain'
+					}
+				) }
+			</a>
+		);
+	},
+
 	getPipe() {
-		let allRules = [ this.expiredDomains, this.expiringDomains, this.newDomainsWithPrimary, this.newDomains, this.unverifiedDomains ],
-			rules;
+		const allRules = [ this.expiredDomains, this.expiringDomains, this.newDomains, this.unverifiedDomains, this.pendingGappsTosAcceptanceDomains ];
+		let rules;
+
 		if ( ! this.props.ruleWhiteList ) {
 			rules = allRules;
 		} else {
-			let validRules = this.props.ruleWhiteList.map( ruleName => this[ ruleName ] );
+			const validRules = this.props.ruleWhiteList.map( ruleName => this[ ruleName ] );
 			rules = intersection( allRules, validRules ); // avoid leaking other functions
 		}
 		return rules;
 	},
 
 	getDomains() {
-		return this.props.domains || [ this.props.domain ]
+		return ( this.props.domains || [ this.props.domain ] ).filter( domain => domain.currentUserCanManage );
 	},
 
 	expiredDomains() {
@@ -66,14 +80,13 @@ export default React.createClass( {
 				context: 'Expired domain notice',
 				comment: '%(timeSince)s is something like "a year ago"'
 			} );
-			renewLink = renewLinkSingle;
 		} else {
 			text = this.translate( 'Some of your domains have expired.', {
 				context: 'Expired domain notice'
 			} );
-			renewLink = renewLinkPlural;
 		}
-		return <Notice status="is-error" showDismiss={ false } key="expired-domains">{ text } { renewLink }</Notice>
+		renewLink = this.renewLink( expiredDomains.length );
+		return <Notice status="is-error" showDismiss={ false } key="expired-domains">{ text } { renewLink }</Notice>;
 	},
 
 	expiringDomains() {
@@ -89,90 +102,76 @@ export default React.createClass( {
 				context: 'Expiring soon domain notice',
 				comment: '%(timeUntil)s is something like "in a week"'
 			} );
-			renewLink = renewLinkSingle;
 		} else {
 			text = this.translate( 'Some of your domains are expiring soon.', {
 				context: 'Expiring domain notice'
 			} );
-			renewLink = renewLinkPlural;
 		}
+		renewLink = this.renewLink( expiringDomains.length );
 		return <Notice status="is-error" showDismiss={ false } key="expiring-domains">{ text } { renewLink }</Notice>;
 	},
 
-	newDomainsWithPrimary() {
-		debug( 'Rendering newDomainsWithPrimary' );
-		let newDomains = this.getDomains().filter( ( domain ) =>
-			domain.registrationMoment && moment( domain.registrationMoment ).add( 3, 'days' ).isAfter( moment() ) && domain.type === domainTypes.REGISTERED ),
-			hasNewPrimaryDomain = newDomains.some( ( domain ) => this.props.selectedSite.domain === domain.name ),
-			text;
-
-		if ( ! hasNewPrimaryDomain || newDomains.length === 0 ) {
-			return null;
-		}
-
-		if ( newDomains.length > 1 ) {
-			// Multiple new domains, one is primary
-			text = this.translate( '{{pNode}}We are setting up your new domains for you. They should start working immediately, ' +
-				'but may be unreliable during the first 72 hours.{{/pNode}}' +
-				'{{pNode}}If you are unable to access your site at %(primaryDomain)s, try setting the primary domain to a domain ' +
-				'you know is working. {{domainsLink}}Learn more{{/domainsLink}} about setting the primary domain.{{/pNode}}',
-				{
-					args: { primaryDomain: this.props.selectedSite.domain },
-					components: {
-						pNode,
-						domainsLink
-					}
-				}
-			);
-		} else {
-			// One new domain and is primary
-			let domain = newDomains[0];
-			text = this.translate( '{{pNode}}We are setting up %(domainName)s for you. It should start working immediately, ' +
-				'but may be unreliable during the first 72 hours.{{/pNode}}' +
-				'{{pNode}}If you are unable to access your site at %(domainName)s, try setting the primary domain to a domain you' +
-				' know is working. {{domainsLink}}Learn more{{/domainsLink}} about setting the primary domain, or ' +
-				'{{tryNowLink}}try %(domainName)s now.{{/tryNowLink}}{{/pNode}}',
-				{
-					args: { domainName: domain.name },
-					components: {
-						domainsLink,
-						pNode,
-						tryNowLink: <a href={ `http://${domain.name}` } target="_blank"/>
-					}
-				}
-			);
-		}
-
-		return <Notice status="is-warning" showDismiss={ false } key="new-domains-with-primary">{ text }</Notice>;
-	},
-
 	newDomains() {
-		let newDomains = this.getDomains().filter( ( domain ) =>
-			domain.registrationMoment && moment( domain.registrationMoment ).add( 3, 'days' ).isAfter( moment() ) && domain.type === domainTypes.REGISTERED ),
-			text;
+		const newDomains = this.getDomains().filter( ( domain ) =>
+				domain.registrationMoment && moment( domain.registrationMoment ).add( 3, 'days' ).isAfter( moment() ) && domain.type === domainTypes.REGISTERED ),
+			hasNewPrimaryDomain = newDomains.some( ( domain ) => this.props.selectedSite.domain === domain.name );
+		let text;
 
 		if ( newDomains.length === 0 ) {
 			return null;
 		}
 
 		if ( newDomains.length > 1 ) {
-			text = this.translate( 'We are setting up your new domains for you. They should start working immediately, ' +
-				'but may be unreliable during the first 72 hours. ' +
-				'{{allAboutDomainsLink}}Learn more{{/allAboutDomainsLink}}.', { components: { allAboutDomainsLink } } );
-		} else {
-			let domain = newDomains[0];
-			text = this.translate( 'We are setting up %(domainName)s for you. It should start working immediately, ' +
-				'but may be unreliable during the first 72 hours. ' +
-				'{{allAboutDomainsLink}}Learn more{{/allAboutDomainsLink}} about your new domain, or {{tryNowLink}} try it now{{/tryNowLink}}.',
-				{
-					args: { domainName: domain.name },
-					components: {
-						allAboutDomainsLink,
-						tryNowLink: <a href={ `http://${domain.name}` } target="_blank"/>
+			if ( hasNewPrimaryDomain ) {
+				text = this.translate( '{{pNode}}We are setting up your new domains for you. They should start working immediately, ' +
+					'but may be unreliable during the first 72 hours.{{/pNode}}' +
+					'{{pNode}}If you are unable to access your site at %(primaryDomain)s, try setting the primary domain to a domain ' +
+					'you know is working. {{domainsLink}}Learn more{{/domainsLink}} about setting the primary domain.{{/pNode}}',
+					{
+						args: { primaryDomain: this.props.selectedSite.domain },
+						components: {
+							pNode,
+							domainsLink
+						}
 					}
-				}
-			);
+				);
+			} else {
+				text = this.translate( 'We are setting up your new domains for you. They should start working immediately, ' +
+					'but may be unreliable during the first 72 hours. ' +
+					'{{allAboutDomainsLink}}Learn more{{/allAboutDomainsLink}}.', { components: { allAboutDomainsLink } } );
+			}
+		} else {
+			const domain = newDomains[0];
+			if ( hasNewPrimaryDomain ) {
+				text = this.translate( '{{pNode}}We are setting up %(domainName)s for you. It should start working immediately, ' +
+					'but may be unreliable during the first 72 hours.{{/pNode}}' +
+					'{{pNode}}If you are unable to access your site at %(domainName)s, try setting the primary domain to a domain you' +
+					' know is working. {{domainsLink}}Learn more{{/domainsLink}} about setting the primary domain, or ' +
+					'{{tryNowLink}}try %(domainName)s now.{{/tryNowLink}}{{/pNode}}',
+					{
+						args: { domainName: domain.name },
+						components: {
+							domainsLink,
+							pNode,
+							tryNowLink: <a href={ `http://${domain.name}` } target="_blank"/>
+						}
+					}
+				);
+			} else {
+				text = this.translate( 'We are setting up %(domainName)s for you. It should start working immediately, ' +
+					'but may be unreliable during the first 72 hours. ' +
+					'{{allAboutDomainsLink}}Learn more{{/allAboutDomainsLink}} about your new domain, or {{tryNowLink}} try it now{{/tryNowLink}}.',
+					{
+						args: { domainName: domain.name },
+						components: {
+							allAboutDomainsLink,
+							tryNowLink: <a href={ `http://${domain.name}` } target="_blank"/>
+						}
+					}
+				);
+			}
 		}
+
 		return <Notice status="is-warning" showDismiss={ false } key="new-domains">{ text }</Notice>;
 	},
 
@@ -185,7 +184,7 @@ export default React.createClass( {
 				key="unverified-domains"
 				text={ this.translate( 'Urgent! Your domain %(domain)s may be lost forever because your email address is not verified.', { args: { domain } } ) }>
 
-				<NoticeAction href={ paths.domainManagementEdit( this.props.selectedSite.domain, domain ) }>
+				<NoticeAction href={ paths.domainManagementEdit( this.props.selectedSite.slug, domain ) }>
 					{ this.translate( 'Fix now' ) }
 				</NoticeAction>
 			</Notice>
@@ -199,7 +198,7 @@ export default React.createClass( {
 				<ul>{
 					domains.map( ( domain ) => {
 						return <li key={ domain.name }>
-							{ domain.name } <a href={ paths.domainManagementEdit( this.props.selectedSite.domain, domain.name ) }>{ this.translate( 'Fix now' ) }</a>
+							{ domain.name } <a href={ paths.domainManagementEdit( this.props.selectedSite.slug, domain.name ) }>{ this.translate( 'Fix now' ) }</a>
 						</li>;
 					} )
 				}</ul>
@@ -208,7 +207,7 @@ export default React.createClass( {
 	},
 
 	unverifiedDomains() {
-		let domains = this.getDomains().filter( domain => domain.isPendingIcannVerification );
+		const domains = this.getDomains().filter( domain => domain.isPendingIcannVerification );
 
 		if ( domains.length === 1 ) {
 			return this.unverifiedDomainNotice( domains[0].name );
@@ -216,6 +215,14 @@ export default React.createClass( {
 			return this.unverifiedDomainsNotice( domains );
 		}
 		return null;
+	},
+
+	pendingGappsTosAcceptanceDomains() {
+		const pendingDomains = this.getDomains().filter( domain =>
+				domain.googleAppsSubscription &&
+				domain.googleAppsSubscription.pendingUsers &&
+				domain.googleAppsSubscription.pendingUsers.length !== 0 );
+		return pendingDomains.length !== 0 && <PendingGappsTosNotice key="pending-gapps-tos-notice" siteSlug={ this.props.selectedSite && this.props.selectedSite.slug } domains={ pendingDomains } section="domain-management" />;
 	},
 
 	componentWillMount: function() {

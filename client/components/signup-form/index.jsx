@@ -9,6 +9,7 @@ import includes from 'lodash/includes';
 import keys from 'lodash/keys';
 import debugModule from 'debug';
 import classNames from 'classnames';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
@@ -26,7 +27,6 @@ import notices from 'notices';
 import Notice from 'components/notice';
 import LoggedOutForm from 'components/logged-out-form';
 import formState from 'lib/form-state';
-import i18n from 'lib/mixins/i18n';
 import LoggedOutFormLinks from 'components/logged-out-form/links';
 import LoggedOutFormLinkItem from 'components/logged-out-form/link-item';
 import LoggedOutFormFooter from 'components/logged-out-form/footer';
@@ -56,7 +56,7 @@ export default React.createClass( {
 			form: null,
 			signedUp: false,
 			validationInitialized: false
-		}
+		};
 	},
 
 	getInitialFields() {
@@ -273,7 +273,7 @@ export default React.createClass( {
 			username: formState.getFieldValue( this.state.form, 'username' ),
 			password: formState.getFieldValue( this.state.form, 'password' ),
 			email: formState.getFieldValue( this.state.form, 'email' )
-		}
+		};
 	},
 
 	getErrorMessagesWithLogin( fieldName ) {
@@ -367,7 +367,7 @@ export default React.createClass( {
 		analytics.tracks.recordEvent.bind(
 			analytics,
 			'calypso_signup_tos_link_click'
-		)
+		);
 	},
 
 	getTermsOfServiceUrl() {
@@ -441,10 +441,8 @@ export default React.createClass( {
 			return;
 		}
 
-		let logInUrl = this.localizeUrlWithSubdomain( config( 'login_url' ) );
-		if ( config.isEnabled( 'login' ) ) {
-			logInUrl = this.localizeUrlWithLastSlug( '/log-in' );
-		}
+		const logInUrl = this.localizeUrlWithSubdomain( config( 'login_url' ) );
+
 		return (
 			<LoggedOutFormLinks>
 				<LoggedOutFormLinkItem href={ logInUrl }>

@@ -4,6 +4,7 @@
 var ReactDom = require( 'react-dom' ),
 	ReactDomServer = require( 'react-dom/server' ),
 	React = require( 'react' ),
+	i18n = require( 'i18n-calypso' ),
 	page = require( 'page' ),
 	ReduxProvider = require( 'react-redux' ).Provider,
 	startsWith = require( 'lodash/startsWith' ),
@@ -14,25 +15,16 @@ var ReactDom = require( 'react-dom' ),
  * Internal dependencies
  */
 var actions = require( 'lib/posts/actions' ),
-	PreferencesData = require( 'components/data/preferences-data' ),
 	PostEditor = require( './post-editor' ),
 	route = require( 'lib/route' ),
-	i18n = require( 'lib/mixins/i18n' ),
-	titleActions = require( 'lib/screen-title/actions' ),
 	sites = require( 'lib/sites-list' )(),
 	user = require( 'lib/user' )(),
+	userUtils = require( 'lib/user/utils' ),
 	analytics = require( 'lib/analytics' );
-
-import {
-	setEditingMode,
-	startEditingNew,
-	startEditingExisting,
-	EDITING_MODES
-} from 'state/ui/editor/post/actions';
 import { setEditorPostId } from 'state/ui/editor/actions';
 import { getSelectedSiteId } from 'state/ui/selectors';
-import { getEditorPostId, getEditorPath, isEditorNewPost } from 'state/ui/editor/selectors';
-import { editPost, resetPostEdits } from 'state/posts/actions';
+import { getEditorPostId, getEditorPath } from 'state/ui/editor/selectors';
+import { editPost } from 'state/posts/actions';
 
 function getPostID( context ) {
 	if ( ! context.params.post || 'new' === context.params.post ) {
@@ -59,12 +51,12 @@ function renderEditor( context, postType ) {
 	ReactDom.unmountComponentAtNode( document.getElementById( 'secondary' ) );
 	ReactDom.render(
 		React.createElement( ReduxProvider, { store: context.store },
-			React.createElement( PreferencesData, null,
-				React.createElement( PostEditor, {
-					sites: sites,
-					type: postType
-				} )
-			)
+			React.createElement( PostEditor, {
+				user: user,
+				userUtils: userUtils,
+				sites: sites,
+				type: postType
+			} )
 		),
 		document.getElementById( 'primary' )
 	);
@@ -121,42 +113,19 @@ module.exports = {
 		const postType = determinePostType( context );
 		const postID = getPostID( context );
 
-		function startEditing() {
-			const site = sites.getSite( route.getSiteFragment( context.path ) );
-
+		function startEditing( siteId ) {
 			context.store.dispatch( setEditorPostId( postID ) );
-			context.store.dispatch( editPost( { type: postType }, site.ID, postID ) );
+			context.store.dispatch( editPost( { type: postType }, siteId, postID ) );
 
 			if ( maybeRedirect( context ) ) {
 				return;
 			}
 
-			let titleStrings;
+			let gaTitle;
 			switch ( postType ) {
-				case 'post':
-					titleStrings = {
-						edit: i18n.translate( 'Edit Post', { textOnly: true } ),
-						new: i18n.translate( 'New Post', { textOnly: true } ),
-						ga: 'Post'
-					};
-					break;
-
-				case 'page':
-					titleStrings = {
-						edit: i18n.translate( 'Edit Page', { textOnly: true } ),
-						new: i18n.translate( 'New Page', { textOnly: true } ),
-						ga: 'Page'
-					};
-					break;
-
-				default:
-					// [TODO]: Improve these strings, notably once page query
-					// component is available for assigning title dynamically.
-					titleStrings = {
-						edit: i18n.translate( 'Edit', { textOnly: true } ),
-						new: i18n.translate( 'New', { textOnly: true } ),
-						ga: 'Custom Post Type'
-					};
+				case 'post': gaTitle = 'Post'; break;
+				case 'page': gaTitle = 'Page'; break;
+				default: gaTitle = 'Custom Post Type';
 			}
 
 			// We have everything we need to start loading the post for editing,
@@ -164,12 +133,8 @@ module.exports = {
 			// in the view components
 			if ( postID ) {
 				// TODO: REDUX - remove flux actions when whole post-editor is reduxified
-				actions.startEditingExisting( site, postID );
-				titleActions.setTitle( titleStrings.edit, { siteID: site.ID } );
-				analytics.pageView.record( '/' + postType + '/:blogid/:postid', titleStrings.ga + ' > Edit' );
-
-				context.store.dispatch( setEditingMode( EDITING_MODES.EXISTING, titleStrings.edit, { siteID: site.ID } ) );
-				context.store.dispatch( startEditingExisting( site, postID ) );
+				actions.startEditingExisting( siteId, postID );
+				analytics.pageView.record( '/' + postType + '/:blogid/:postid', gaTitle + ' > Edit' );
 			} else {
 				let postOptions = { type: postType };
 
@@ -184,32 +149,30 @@ module.exports = {
 				}
 
 				// TODO: REDUX - remove flux actions when whole post-editor is reduxified
-				actions.startEditingNew( site, postOptions );
-				titleActions.setTitle( titleStrings.new, { siteID: site.ID } );
-				analytics.pageView.record( '/' + postType, titleStrings.ga + ' > New' );
-
-				context.store.dispatch( setEditingMode( EDITING_MODES.NEW, titleStrings.new, { siteID: site.ID } ) );
-				context.store.dispatch( startEditingNew( site, postOptions ) );
+				actions.startEditingNew( siteId, postOptions );
+				analytics.pageView.record( '/' + postType, gaTitle + ' > New' );
 			}
 		}
 
-		if ( sites.initialized ) {
-			startEditing();
-		} else {
-			// The site selection flow in the siteSelection route middleware
-			// will cause the change handler here to be invoked before site is
-			// set in Redux store. To account for this, we continue to check
-			// state for site ID to have been set.
-			function startEditingOnSitesInitialized() {
-				if ( getSelectedSiteId( context.store.getState() ) ) {
-					startEditing();
-				} else {
-					sites.once( 'change', startEditingOnSitesInitialized );
-				}
-			}
+		// Before starting to edit, we want to be sure that we have a valid
+		// selected site to work with. Therefore, we wait on the following
+		// conditions:
+		//  - Sites have not yet been initialized (no localStorage available)
+		//  - Sites are initialized, but the site ID is unknown, so we wait for
+		//    the sites list to be refreshed (for example, if the user does not
+		//    have permission to view the site)
+		//  - Sites are initialized _and_ fetched, but the selected site has
+		//    not yet been selected, so is not available in global state yet
+		function startEditingOnSiteSelected() {
+			const siteId = getSelectedSiteId( context.store.getState() );
 
-			sites.once( 'change', startEditingOnSitesInitialized );
+			if ( siteId ) {
+				startEditing( siteId );
+			} else {
+				sites.once( 'change', startEditingOnSiteSelected );
+			}
 		}
+		startEditingOnSiteSelected();
 
 		renderEditor( context, postType );
 	},
@@ -236,15 +199,5 @@ module.exports = {
 
 		page.redirect( redirectWithParams );
 		return false;
-	},
-
-	resetNewPostEdits( context, next ) {
-		const state = context.store.getState();
-		if ( isEditorNewPost( state ) ) {
-			const siteId = getSelectedSiteId( state );
-			context.store.dispatch( resetPostEdits( siteId ) )
-		}
-
-		next();
 	}
 };

@@ -10,8 +10,11 @@ import times from 'lodash/times';
 import Card from 'components/card';
 import { filterPlansBySiteAndProps } from 'lib/plans';
 import { getCurrentPlan } from 'lib/plans';
-import { isJpphpBundle } from 'lib/products-values'
+import { isJpphpBundle } from 'lib/products-values';
 import Plan from 'components/plans/plan';
+import { isEnabled } from 'config';
+
+const isPersonalPlanEnabled = isEnabled( 'plans/personal-plan' );
 
 const PlanList = React.createClass( {
 	getInitialState() {
@@ -23,18 +26,18 @@ const PlanList = React.createClass( {
 	},
 
 	render() {
-		const isLoadingSitePlans = ! this.props.isInSignup && ! this.props.sitePlans.hasLoadedFromServer,
-			site = this.props.site;
+		const isLoadingSitePlans = ! this.props.isInSignup && ! this.props.sitePlans.hasLoadedFromServer;
+		const { site, hideFreePlan, plans, intervalType, showJetpackFreePlan } = this.props;
 
 		let className = '',
-			plans = this.props.plans,
-			numberOfPlaceholders = 3,
-			plansList;
+			numberOfPlaceholders = isPersonalPlanEnabled ? 4 : 3;
 
-		if ( this.props.hideFreePlan || ( site && site.jetpack ) ) {
-			numberOfPlaceholders = 2;
+		if ( hideFreePlan || ( site && site.jetpack ) ) {
+			numberOfPlaceholders = showJetpackFreePlan ? 3 : 2;
 			className = 'jetpack';
 		}
+
+		let plansList;
 
 		if ( plans.length === 0 || isLoadingSitePlans ) {
 			plansList = times( numberOfPlaceholders, ( n ) => {
@@ -75,15 +78,22 @@ const PlanList = React.createClass( {
 		}
 
 		if ( plans.length > 0 ) {
-			plans = filterPlansBySiteAndProps( plans, site, this.props.hideFreePlan );
+			let filteredPlans = filterPlansBySiteAndProps( plans, site, hideFreePlan, intervalType, showJetpackFreePlan );
 
-			plansList = plans.map( ( plan ) => {
+			filteredPlans = filteredPlans.map( plan => {
+				if ( plan.product_id === 1003 ) {
+					plan.description = this.translate( 'Your own domain name, powerful customization options, ' +
+						'easy monetization with WordAds, and lots of space for audio and video.' );
+				}
+				return plan;
+			} );
+
+			plansList = filteredPlans.map( plan => {
 				return (
 					<Plan
 						plan={ plan }
 						sitePlans={ this.props.sitePlans }
 						comparePlansUrl={ this.props.comparePlansUrl }
-						hideDiscountMessage={ this.props.hideFreePlan }
 						isInSignup={ this.props.isInSignup }
 						key={ plan.product_id }
 						open={ plan.product_id === this.state.openPlan }
@@ -91,7 +101,8 @@ const PlanList = React.createClass( {
 						onSelectPlan={ this.props.onSelectPlan }
 						site={ site }
 						cart={ this.props.cart }
-						isSubmitting={ this.props.isSubmitting } />
+						isSubmitting={ this.props.isSubmitting }
+						onSelectFreeJetpackPlan={ this.props.onSelectFreeJetpackPlan } />
 				);
 			} );
 		}

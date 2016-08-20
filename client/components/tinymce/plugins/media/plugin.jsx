@@ -11,6 +11,7 @@ var ReactDom = require( 'react-dom' ),
 	values = require( 'lodash/values' ),
 	debounce = require( 'lodash/debounce' ),
 	includes = require( 'lodash/includes' ),
+	i18n = require( 'i18n-calypso' ),
 	Shortcode = require( 'lib/shortcode' ),
 	closest = require( 'component-closest' );
 
@@ -18,7 +19,6 @@ var ReactDom = require( 'react-dom' ),
  * Internal dependencies
  */
 var sites = require( 'lib/sites-list' )(),
-	i18n = require( 'lib/mixins/i18n' ),
 	PostActions = require( 'lib/posts/actions' ),
 	PostEditStore = require( 'lib/posts/post-edit-store' ),
 	MediaConstants = require( 'lib/media/constants' ),
@@ -96,10 +96,6 @@ function mediaButton( editor ) {
 			return;
 		}
 
-		if ( ! config.isEnabled( 'post-editor/live-image-updates' ) ) {
-			return;
-		}
-
 		// Create rendering context for drop zone
 		if ( ! nodes.dropzone ) {
 			nodes.dropzone = document.createElement( 'div' );
@@ -137,7 +133,7 @@ function mediaButton( editor ) {
 			transients = 0,
 			isVisualEditMode, content, images;
 
-		if ( ! selectedSite || ! config.isEnabled( 'post-editor/live-image-updates' ) ) {
+		if ( ! selectedSite ) {
 			return;
 		}
 
@@ -281,28 +277,30 @@ function mediaButton( editor ) {
 		renderDropZone( { visible: event.type === 'dragend' } );
 	}
 
+	editor.addCommand( 'wpcomAddMedia', () => {
+		var selectedSite = sites.getSelectedSite();
+		if ( selectedSite ) {
+			MediaActions.clearValidationErrors( selectedSite.ID );
+		}
+
+		renderModal( {
+			visible: true,
+			initialActiveView: MediaModalViews.LIST
+		} );
+	} );
+
 	editor.addButton( 'wpcom_add_media', {
 		classes: 'btn wpcom-icon-button media',
-
+		cmd: 'wpcomAddMedia',
 		title: i18n.translate( 'Add Media' ),
-
 		onPostRender: function() {
 			this.innerHtml( ReactDomServer.renderToStaticMarkup(
 				<button type="button" role="presentation" tabIndex="-1">
-					<Gridicon icon="image-multiple" size={ 20 } nonStandardSize />
+					{ /* eslint-disable wpcalypso/jsx-gridicon-size */ }
+					<Gridicon icon="image-multiple" size={ 20 } />
+					{ /* eslint-enable wpcalypso/jsx-gridicon-size */ }
 				</button>
 			) );
-		},
-		onclick: function() {
-			var selectedSite = sites.getSelectedSite();
-			if ( selectedSite ) {
-				MediaActions.clearValidationErrors( selectedSite.ID );
-			}
-
-			renderModal( {
-				visible: true,
-				initialActiveView: MediaModalViews.LIST
-			} );
 		}
 	} );
 

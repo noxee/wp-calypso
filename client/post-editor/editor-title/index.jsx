@@ -2,10 +2,9 @@
  * External dependencies
  */
 import React, { PropTypes } from 'react';
+import ReactDom from 'react-dom';
 import classNames from 'classnames';
-import omit from 'lodash/omit';
-import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
+import { omit, get } from 'lodash';
 
 /**
  * Internal dependencies
@@ -15,67 +14,64 @@ import PostUtils from 'lib/posts/utils';
 import SiteUtils from 'lib/site/utils';
 import EditorPermalink from 'post-editor/editor-permalink';
 import TrackInputChanges from 'components/track-input-changes';
-import FormTextInput from 'components/forms/form-text-input';
+import TextareaAutosize from 'components/textarea-autosize';
 import { isMobile } from 'lib/viewport';
 import * as stats from 'lib/posts/stats';
-import { setTitle } from 'state/ui/editor/post/actions';
 
-const EditorTitle = React.createClass( {
+/**
+ * Constants
+ */
+const REGEXP_NEWLINES = /[\r\n]+/g;
+
+export default React.createClass( {
 	displayName: 'EditorTitle',
 
 	propTypes: {
-		setTitle: PropTypes.func,
 		post: PropTypes.object,
 		site: PropTypes.object,
 		isNew: PropTypes.bool,
 		onChange: PropTypes.func
 	},
 
-	getInitialState() {
-		return {
-			isFocused: false
-		};
-	},
-
 	getDefaultProps() {
 		return {
 			isNew: true,
-			onChange: () => {},
-			setTitle: () => {},
+			onChange: () => {}
 		};
 	},
 
-	componentWillReceiveProps( nextProps ) {
+	componentDidUpdate( prevProps ) {
 		if ( isMobile() ) {
 			return;
 		}
 
 		// If next post is new, or the next site is different, focus title
-		if ( nextProps.isNew && ! this.props.isNew ||
-			( nextProps.isNew && ( this.props.site && nextProps.site ) && ( this.props.site.ID !== nextProps.site.ID ) )
-		) {
-			this.setState( {
-				isFocused: true
-			}, () => {
-				this.refs.titleInput.focus();
-			} );
+		const { isNew, site } = this.props;
+		if ( ( isNew && ! prevProps.isNew ) ||
+				( isNew && get( prevProps.site, 'ID' ) !== get( site, 'ID' ) ) ) {
+			const input = ReactDom.findDOMNode( this.refs.titleInput );
+			input.focus();
 		}
 	},
 
 	onChange( event ) {
-		const { post, onChange } = this.props;
-
-		if ( ! post ) {
+		if ( ! this.props.post ) {
 			return;
 		}
 
 		// TODO: REDUX - remove flux actions when whole post-editor is reduxified
 		PostActions.edit( {
-			title: event.target.value
+			title: event.target.value.replace( REGEXP_NEWLINES, ' ' )
 		} );
+		this.props.onChange( event );
+	},
 
-		this.props.setTitle( event.target.value );
-		onChange( event );
+	resizeAfterNewlineInput( event ) {
+		const title = event.target.value;
+		if ( REGEXP_NEWLINES.test( title ) ) {
+			event.target.value = title.replace( REGEXP_NEWLINES, ' ' );
+			this.refs.titleInput.resize();
+		}
 	},
 
 	recordChangeStats() {
@@ -85,19 +81,7 @@ const EditorTitle = React.createClass( {
 	},
 
 	onBlur( event ) {
-		this.setState( {
-			isFocused: false
-		} );
-
 		this.onChange( event );
-
-		event.target.scrollLeft = 0;
-	},
-
-	onFocus() {
-		this.setState( {
-			isFocused: true
-		} );
 	},
 
 	render() {
@@ -105,7 +89,6 @@ const EditorTitle = React.createClass( {
 		const isPermalinkEditable = SiteUtils.isPermalinkEditable( site );
 
 		const classes = classNames( 'editor-title', {
-			'is-focused': this.state.isFocused,
 			'is-loading': ! post
 		} );
 
@@ -118,26 +101,20 @@ const EditorTitle = React.createClass( {
 						isEditable={ isPermalinkEditable } />
 				}
 				<TrackInputChanges onNewValue={ this.recordChangeStats }>
-					<FormTextInput
+					<TextareaAutosize
 						{ ...omit( this.props, Object.keys( this.constructor.propTypes ) ) }
 						className="editor-title__input"
 						placeholder={ this.translate( 'Title' ) }
 						onChange={ this.onChange }
+						onInput={ this.resizeAfterNewlineInput }
 						onBlur={ this.onBlur }
-						onFocus={ this.onFocus }
 						autoFocus={ isNew && ! isMobile() }
 						value={ post ? post.title : '' }
 						aria-label={ this.translate( 'Edit title' ) }
-						ref="titleInput" />
+						ref="titleInput"
+						rows="1" />
 				</TrackInputChanges>
 			</div>
 		);
 	}
 } );
-
-export default connect(
-	null,
-	dispatch => bindActionCreators( { setTitle }, dispatch ),
-	null,
-	{ pure: false }
-)( EditorTitle );

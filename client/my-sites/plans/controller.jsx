@@ -4,14 +4,13 @@
 import page from 'page';
 import React from 'react';
 import ReactDom from 'react-dom';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal Dependencies
  */
 import analytics from 'lib/analytics';
-import config from 'config';
-import i18n from 'lib/mixins/i18n';
-import plansFactory from 'lib/plans-list';
+import { isEnabled } from 'config';
 import { renderWithReduxStore } from 'lib/react-helpers';
 import route from 'lib/route';
 import sitesFactory from 'lib/sites-list';
@@ -19,7 +18,6 @@ import titleActions from 'lib/screen-title/actions';
 import get from 'lodash/get';
 import { isValidFeatureKey } from 'lib/plans';
 
-const plans = plansFactory();
 const sites = sitesFactory();
 
 export default {
@@ -34,7 +32,7 @@ export default {
 		let analyticsBasePath;
 
 		// Don't show plans for Jetpack sites
-		if ( site && site.jetpack && ! config.isEnabled( 'manage/jetpack-plans' ) ) {
+		if ( site && site.jetpack && ! isEnabled( 'manage/jetpack-plans' ) ) {
 			analytics.pageView.record( basePath + '/jetpack/:site', analyticsPageTitle + ' > Jetpack Plans Not Available' );
 
 			ReactDom.render(
@@ -65,13 +63,20 @@ export default {
 		analytics.tracks.recordEvent( 'calypso_plans_view' );
 		analytics.pageView.record( analyticsBasePath, analyticsPageTitle );
 
+		// Scroll to the top
+		if ( typeof window !== 'undefined' ) {
+			window.scrollTo( 0, 0 );
+		}
+
 		renderWithReduxStore(
 			<CheckoutData>
 				<Plans
 					sites={ sites }
-					plans={ plans }
 					context={ context }
-					destinationType={ context.params.destinationType } />
+					intervalType={ context.params.intervalType }
+					destinationType={ context.params.destinationType }
+					selectedFeature={ context.query.feature }
+				/>
 			</CheckoutData>,
 			document.getElementById( 'primary' ),
 			context.store
@@ -105,14 +110,19 @@ export default {
 			siteID: context.params.domain
 		} );
 
+		// Scroll to the top
+		if ( typeof window !== 'undefined' ) {
+			window.scrollTo( 0, 0 );
+		}
+
 		renderWithReduxStore(
 			<Main className="plans has-sidebar">
 				<CheckoutData>
 					<PlansCompare
 						selectedSite={ site }
-						plans={ plans }
 						features={ features }
-						selectedFeature={ context.params.feature }
+						selectedFeature={ context.params.feature || context.query.feature }
+						intervalType={ context.params.intervalType }
 						productsList={ productsList } />
 				</CheckoutData>
 			</Main>,
@@ -137,5 +147,15 @@ export default {
 	redirectToCheckout( context ) {
 		// this route is deprecated, use `/checkout/:site/:plan` to link to plan checkout
 		page.redirect( `/checkout/${ context.params.domain }/${ context.params.plan }` );
+	},
+
+	redirectToPlans( context ) {
+		const siteDomain = context.params.domain;
+
+		if ( siteDomain ) {
+			return page.redirect( `/plans/${ siteDomain }` );
+		}
+
+		return page.redirect( '/plans' );
 	}
 };

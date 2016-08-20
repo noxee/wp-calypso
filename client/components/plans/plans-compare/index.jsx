@@ -3,10 +3,9 @@
  */
 import classNames from 'classnames';
 import { connect } from 'react-redux';
-import find from 'lodash/find';
 import page from 'page';
 import React from 'react';
-import times from 'lodash/times';
+import { find, times, isEmpty } from 'lodash';
 
 /**
  * Internal dependencies
@@ -14,11 +13,16 @@ import times from 'lodash/times';
 import analytics from 'lib/analytics';
 import Card from 'components/card';
 import { fetchSitePlans } from 'state/sites/plans/actions';
-import { filterPlansBySiteAndProps, shouldFetchSitePlans } from 'lib/plans';
+import {
+	filterPlansBySiteAndProps,
+	shouldFetchSitePlans,
+} from 'lib/plans';
+import { findCurrencyFromPlans } from 'lib/plans/utils';
+import { getPlans } from 'state/plans/selectors';
 import { getPlansBySite } from 'state/sites/plans/selectors';
 import Gridicon from 'components/gridicon';
 import HeaderCake from 'components/header-cake';
-import { isBusiness, isFreePlan, isPremium } from 'lib/products-values';
+import { isFreePlan, isPersonal, isPremium, isBusiness } from 'lib/products-values';
 import NavItem from 'components/section-nav/item';
 import NavTabs from 'components/section-nav/tabs';
 import observe from 'lib/mixins/data-observe';
@@ -28,18 +32,37 @@ import PlanPrice from 'components/plans/plan-price';
 import SectionNav from 'components/section-nav';
 import SidebarNavigation from 'my-sites/sidebar-navigation';
 import { SUBMITTING_WPCOM_REQUEST } from 'lib/store-transactions/step-types';
+import QueryPlans from 'components/data/query-plans';
+import { isEnabled } from 'config';
+import InfoPopover from 'components/info-popover';
+import { isJetpack } from 'lib/site/utils';
+import {
+	featuresList,
+	FEATURE_WORDADS_INSTANT,
+} from 'lib/plans/constants';
+
+// WordAds instant activation feature
+const wordAdsInstant = featuresList[ FEATURE_WORDADS_INSTANT ];
+const wordAdsFeature = {
+	title: wordAdsInstant.getTitle(),
+	compareDescription: wordAdsInstant.getDescription(),
+	1: false,
+	1003: true,
+	1008: true,
+	product_slug: FEATURE_WORDADS_INSTANT
+};
+
+const isPersonalPlanEnabled = isEnabled( 'plans/personal-plan' );
 
 const PlansCompare = React.createClass( {
-	mixins: [
-		observe( 'features', 'plans' )
-	],
+	mixins: [ observe( 'features' ) ],
 
 	componentWillReceiveProps( nextProps ) {
 		this.props.fetchSitePlans( nextProps.sitePlans, nextProps.selectedSite );
 	},
 
 	getInitialState() {
-		return { selectedPlan: 'premium' }
+		return { selectedPlan: 'premium' };
 	},
 
 	getDefaultProps() {
@@ -62,24 +85,46 @@ const PlansCompare = React.createClass( {
 		analytics.ga.recordEvent( 'Upgrades', 'Clicked View All Plans' );
 	},
 
-	goBack() {
-		if ( this.props.backUrl ) {
-			return page( this.props.backUrl );
-		}
+	setFreePlan() {
+		this.setPlan( 'free' );
+	},
 
+	setPersonalPlan() {
+		this.setPlan( 'personal' );
+	},
+
+	setPremiumPlan() {
+		this.setPlan( 'premium' );
+	},
+
+	setBusinessPlan() {
+		this.setPlan( 'business' );
+	},
+
+	getPlanURL() {
 		const selectedSite = this.props.selectedSite;
-		let plansLink = '/plans';
+		let url = '/plans';
+
+		if ( 'monthly' === this.props.intervalType ) {
+			url += '/monthly';
+		}
 
 		if ( selectedSite ) {
-			plansLink += '/' + selectedSite.slug;
+			url += '/' + selectedSite.slug;
 		}
+		return url;
+	},
 
+	goBack() {
 		this.recordViewAllPlansClick();
-		page( plansLink );
+
+		page.show( this.props.backUrl || this.getPlanURL() );
 	},
 
 	isDataLoading() {
-		if ( ! this.props.features.get() ) {
+		const planFeatures = this.props.features.get();
+
+		if ( ! planFeatures || isEmpty( planFeatures ) ) {
 			return true;
 		}
 
@@ -91,16 +136,16 @@ const PlansCompare = React.createClass( {
 			return false;
 		}
 
-		if ( this.props.sitePlans && this.props.sitePlans.hasLoadedFromServer ) {
-			return false;
-		}
-
-		return true;
+		return ! ( this.props.sitePlans && this.props.sitePlans.hasLoadedFromServer );
 	},
 
 	isSelected( plan ) {
 		if ( this.state.selectedPlan === 'free' ) {
 			return isFreePlan( plan );
+		}
+
+		if ( this.state.selectedPlan === 'personal' ) {
+			return isPersonal( plan );
 		}
 
 		if ( this.state.selectedPlan === 'premium' ) {
@@ -117,32 +162,51 @@ const PlansCompare = React.createClass( {
 			return false;
 		}
 
-		return this.props.transaction.step.name === SUBMITTING_WPCOM_REQUEST
+		return this.props.transaction.step.name === SUBMITTING_WPCOM_REQUEST;
 	},
 
 	getColumnCount() {
-		if ( ! this.props.selectedSite ) {
-			return 4;
+		const colsCount = isPersonalPlanEnabled ? 5 : 4;
+
+		if ( ! this.props.selectedSite || ! this.props.selectedSite.jetpack ) {
+			return colsCount;
 		}
 
-		return this.props.selectedSite.jetpack ? 3 : 4;
+		// column count for jetpack site
+		return 3;
+	},
+
+	isUSorCanada() {
+		const { plans } = this.props;
+		const planCurrency = findCurrencyFromPlans( plans );
+		return [ 'USD', 'CAD' ].indexOf( planCurrency ) > -1;
 	},
 
 	getFeatures() {
 		const plans = this.getPlans();
+		const { selectedSite } = this.props;
 
-		return this.props.features.get().filter( ( feature ) => {
-			return plans.some( ( plan ) => {
+		const features = this.props.features.get().filter( ( feature ) => {
+			return plans.some( plan => {
 				return feature[ plan.product_id ];
 			} );
 		} );
+
+		if ( isJetpack( selectedSite ) ) {
+			return features;
+		}
+
+		features.splice( 6, 0, wordAdsFeature );
+
+		return features;
 	},
 
 	getPlans() {
 		return filterPlansBySiteAndProps(
-			this.props.plans.get(),
+			this.props.plans,
 			this.props.selectedSite,
-			this.props.hideFreePlan
+			this.props.hideFreePlan,
+			this.props.intervalType
 		);
 	},
 
@@ -230,8 +294,8 @@ const PlansCompare = React.createClass( {
 				);
 			} );
 		} else {
-			const plans = this.getPlans(),
-				features = this.getFeatures();
+			const plans = this.getPlans();
+			const features = this.getFeatures();
 
 			rows = features.map( ( feature ) => {
 				const planFeatures = plans.map( ( plan ) => {
@@ -244,7 +308,10 @@ const PlansCompare = React.createClass( {
 
 					let content;
 
-					if ( typeof feature[ plan.product_id ] === 'boolean' && feature[ plan.product_id ] ) {
+					if (
+						typeof feature[ plan.product_id ] === 'boolean' &&
+						feature[ plan.product_id ]
+					) {
 						content = <Gridicon icon="checkmark-circle" size={ 24 } />;
 					}
 
@@ -257,7 +324,7 @@ const PlansCompare = React.createClass( {
 							className={ classes }
 							key={ plan.product_id }>
 							<div className={ mobileClasses }>
-								{ feature.title }
+								{ this.renderFeatureTitle( feature ) }
 							</div>
 							<div className="plans-compare__cell-content">
 								{ content }
@@ -266,8 +333,10 @@ const PlansCompare = React.createClass( {
 					);
 				} );
 
+				const isHighlighted = this.props.selectedFeature &&
+					this.props.selectedFeature.toLowerCase() === feature.product_slug.split( '/' )[ 0 ].toLowerCase();
 				const classes = classNames( 'plans-compare__row', {
-					'is-highlighted': this.props.selectedFeature && this.props.selectedFeature.toLowerCase() === feature.product_slug.split( '/' )[0].toLowerCase()
+					'is-highlighted': isHighlighted
 				} );
 
 				return (
@@ -275,7 +344,7 @@ const PlansCompare = React.createClass( {
 						<td
 							className="plans-compare__cell"
 							key={ feature.title }>
-							{ feature.title }
+							{ this.renderFeatureTitle( feature ) }
 						</td>
 						{ planFeatures }
 					</tr>
@@ -342,17 +411,18 @@ const PlansCompare = React.createClass( {
 	sectionNavigationForMobile() {
 		const text = {
 			free: this.translate( 'Free' ),
+			personal: this.translate( 'Personal' ),
 			premium: this.translate( 'Premium' ),
 			business: this.translate( 'Business' )
 		};
 
 		let freeOption = (
-				<NavItem
-					onClick={ this.setPlan.bind( this, 'free' ) }
-					selected={ 'free' === this.state.selectedPlan }>
-					{ this.translate( 'Free' ) }
-				</NavItem>
-			);
+			<NavItem
+				onClick={ this.setFreePlan }
+				selected={ 'free' === this.state.selectedPlan }>
+				{ this.translate( 'Free' ) }
+			</NavItem>
+		);
 
 		if ( this.props.selectedSite && this.props.selectedSite.jetpack ) {
 			freeOption = null;
@@ -363,14 +433,27 @@ const PlansCompare = React.createClass( {
 				<SectionNav selectedText={ text[ this.state.selectedPlan ] }>
 					<NavTabs>
 						{ freeOption }
+
+						{ isPersonalPlanEnabled &&
+							<NavItem
+								onClick={ this.setPersonalPlan }
+								selected={ 'personal' === this.state.selectedPlan }
+							>
+								{ this.translate( 'Personal' ) }
+							</NavItem>
+						}
+
 						<NavItem
-							onClick={ this.setPlan.bind( this, 'premium' ) }
-							selected={ 'premium' === this.state.selectedPlan }>
+							onClick={ this.setPremiumPlan }
+							selected={ 'premium' === this.state.selectedPlan }
+						>
 							{ this.translate( 'Premium' ) }
 						</NavItem>
+
 						<NavItem
-							onClick={ this.setPlan.bind( this, 'business' ) }
-							selected={ 'business' === this.state.selectedPlan }>
+							onClick={ this.setBusinessPlan }
+							selected={ 'business' === this.state.selectedPlan }
+						>
 							{ this.translate( 'Business' ) }
 						</NavItem>
 					</NavTabs>
@@ -379,11 +462,28 @@ const PlansCompare = React.createClass( {
 		);
 	},
 
+	renderFeatureTitle( feature ) {
+		return (
+			<div className="plans-compare__feature-title">
+				<span className="plans-compare__feature-title__container">
+					{ feature.title }
+				</span>
+				{ feature.compareDescription &&
+					<div className="plans-compare__feature-descripcion">
+						<InfoPopover position="right">
+							{ feature.compareDescription }
+						</InfoPopover>
+					</div>
+				}
+			</div>
+		);
+	},
+
 	render() {
 		const classes = classNames( this.props.className, 'plans-compare', {
-				'is-placeholder': this.isDataLoading(),
-				'is-jetpack-site': this.props.selectedSite && this.props.selectedSite.jetpack
-			} );
+			'is-placeholder': this.isDataLoading(),
+			'is-jetpack-site': this.props.selectedSite && this.props.selectedSite.jetpack
+		} );
 
 		let compareString = this.translate( 'Compare Plans' );
 
@@ -393,10 +493,11 @@ const PlansCompare = React.createClass( {
 
 		return (
 			<div className={ classes }>
+				<QueryPlans />
 				{
 					this.props.isInSignup
-					? null
-					: <SidebarNavigation />
+						? null
+						: <SidebarNavigation />
 				}
 				<HeaderCake onClick={ this.goBack }>
 					{ compareString }
@@ -413,6 +514,7 @@ const PlansCompare = React.createClass( {
 export default connect(
 	( state, props ) => {
 		return {
+			plans: getPlans( state ),
 			sitePlans: getPlansBySite( state, props.selectedSite )
 		};
 	},

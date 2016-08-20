@@ -7,11 +7,11 @@ import { Provider as ReduxProvider } from 'react-redux';
 import page from 'page';
 import qs from 'qs';
 import isEmpty from 'lodash/isEmpty';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal Dependencies
  */
-import i18n from 'lib/mixins/i18n';
 import config from 'config';
 import route from 'lib/route';
 import analytics from 'lib/analytics';
@@ -100,42 +100,6 @@ export default {
 					stepSectionName: stepSectionName
 				} )
 			),
-			document.getElementById( 'primary' )
-		);
-	},
-
-	phoneSignup( context ) {
-		var PhoneSignupComponent = require( 'signup/phone-signup-form' ),
-			countriesList = require( 'lib/countries-list' ).forSms(),
-			basePath = route.sectionify( context.path );
-
-		analytics.pageView.record( basePath, basePageTitle + ' > Phone' );
-
-		titleActions.setTitle( i18n.translate( 'Create an account' ) );
-
-		ReactDom.render(
-			React.createElement( PhoneSignupComponent, {
-				path: context.path,
-				countriesList: countriesList,
-				locale: context.params.lang
-			} ),
-			document.getElementById( 'primary' )
-		);
-	},
-
-	login( context ) {
-		var LogInComponent = require( 'signup/log-in-form' ),
-			basePath = route.sectionify( context.path );
-
-		analytics.pageView.record( basePath, basePageTitle + ' > Log-in' );
-
-		titleActions.setTitle( i18n.translate( 'Log in to your WordPress.com account' ) );
-
-		ReactDom.render(
-			React.createElement( LogInComponent, {
-				path: context.path,
-				locale: context.params.lang
-			} ),
 			document.getElementById( 'primary' )
 		);
 	}

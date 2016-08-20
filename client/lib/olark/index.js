@@ -5,6 +5,7 @@ import debugModule from 'debug';
 import config from 'config';
 import cookie from 'cookie';
 import store from 'store';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
@@ -19,7 +20,6 @@ import notices from 'notices';
 import olarkEvents from 'lib/olark-events';
 import olarkStore from 'lib/olark-store';
 import olarkActions from 'lib/olark-store/actions';
-import i18n from 'lib/mixins/i18n';
 
 /**
  * Module variables
@@ -149,6 +149,16 @@ const olark = {
 		} else {
 			this.showChatBox();
 		}
+	},
+
+	updateOlarkGroupAndEligibility() {
+		this.getOlarkConfiguration()
+			.then( ( configuration ) => {
+				const isUserEligible = ( 'undefined' === typeof configuration.isUserEligible ) ? true : configuration.isUserEligible;
+				olarkApi( 'api.chat.setOperatorGroup', { group: configuration.group } );
+				olarkActions.setUserEligibility( isUserEligible );
+			} )
+			.catch( ( error ) => this.handleError( error ) );
 	},
 
 	syncStoreWithExpandedState() {
@@ -413,3 +423,4 @@ const olark = {
 
 emitter( olark );
 olark.initialize();
+module.exports = olark;

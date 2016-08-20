@@ -5,7 +5,6 @@ var ReactDom = require( 'react-dom' ),
 	React = require( 'react' ),
 	PureRenderMixin = require( 'react-pure-render/mixin' ),
 	resizeImageUrl = require( 'lib/resize-image-url' ),
-	classes = require( 'component-classes' ),
 	domScrollIntoView = require( 'dom-scroll-into-view' ),
 	ReactCSSTransitionGroup = require( 'react-addons-css-transition-group' );
 
@@ -95,7 +94,7 @@ var PostImages = React.createClass( {
 			viewing: newState
 		} );
 
-		classes( document.documentElement ).toggle( 'reader-gallery-open' );
+		document.documentElement.classList.toggle( 'reader-gallery-open' );
 	},
 
 	ignoreClick: function( event ) {
@@ -116,7 +115,7 @@ var PostImages = React.createClass( {
 		if ( this.state.viewing ) {
 			fullList = images.map( function( image, index ) {
 				return (
-					<li key={ 'full-image-' + index } className='reader-post-images__full-image'>
+					<li key={ 'full-image-' + index } className="reader-post-images__full-image">
 						<img
 							src={ resizeImageUrl( image.src, { h: 800, w: 800 } ) }
 							onClick={ this.ignoreClick }

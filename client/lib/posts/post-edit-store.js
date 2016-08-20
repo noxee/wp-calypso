@@ -10,6 +10,8 @@ var assign = require( 'lodash/assign' ),
 	without = require( 'lodash/without' ),
 	map = require( 'lodash/map' ),
 	pickBy = require( 'lodash/pickBy' );
+import mapValues from 'lodash/mapValues';
+import omit from 'lodash/omit';
 
 /**
  * Internal dependencies

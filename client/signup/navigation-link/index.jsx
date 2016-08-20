@@ -3,11 +3,13 @@
  */
 import React from 'react';
 import find from 'lodash/find';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
 import analytics from 'lib/analytics';
+import Button from 'components/button';
 import Gridicon from 'components/gridicon';
 import { submitSignupStep } from 'lib/signup/actions';
 import signupUtils from 'signup/utils';
@@ -28,14 +30,14 @@ const NavigationLink = React.createClass( {
 			return;
 		}
 
-		if ( this.props.getBackUrl ) {
-			return this.props.getBackUrl;
+		if ( this.props.backUrl ) {
+			return this.props.backUrl;
 		}
 
 		const previousStepName = signupUtils.getPreviousStepName( this.props.flowName, this.props.stepName ),
 			{ stepSectionName } = find( this.props.signupProgressStore, { stepName: previousStepName } );
 
-		return signupUtils.getStepUrl( this.props.flowName, previousStepName, stepSectionName );
+		return signupUtils.getStepUrl( this.props.flowName, previousStepName, stepSectionName, i18n.getLocaleSlug() );
 	},
 
 	handleClick() {
@@ -71,23 +73,21 @@ const NavigationLink = React.createClass( {
 		let backGridicon, forwardGridicon, text;
 
 		if ( this.props.direction === 'back' ) {
-			backGridicon = <Gridicon icon="chevron-left" size={ 18 } />;
+			backGridicon = <Gridicon icon="arrow-left" size={ 18 } />;
 			text = this.translate( 'Back' );
 		}
 
 		if ( this.props.direction === 'forward' ) {
-			forwardGridicon = <Gridicon icon="chevron-right" size={ 18 } />;
+			forwardGridicon = <Gridicon icon="arrow-right" size={ 18 } />;
 			text = this.translate( 'Skip for now' );
 		}
 
 		return (
-			<a className="navigation-link" href={ this.getBackUrl() } onClick={ this.handleClick }>
-				<span className="navigation-link__label">
-					{ backGridicon }
-					{ text }
-					{ forwardGridicon }
-				</span>
-			</a>
+			<Button compact borderless className="navigation-link" href={ this.getBackUrl() } onClick={ this.handleClick }>
+				{ backGridicon }
+				{ text }
+				{ forwardGridicon }
+			</Button>
 		);
 	}
 } );

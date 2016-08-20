@@ -5,6 +5,8 @@ var React = require( 'react' ),
 	debug = require( 'debug' )( 'calypso:steps:plans' ),
 	isEmpty = require( 'lodash/isEmpty' );
 
+import classNames from 'classnames';
+
 /**
  * Internal dependencies
  */
@@ -18,6 +20,11 @@ var productsList = require( 'lib/products-list' )(),
 	signupUtils = require( 'signup/utils' ),
 	StepWrapper = require( 'signup/step-wrapper' ),
 	Gridicon = require( 'components/gridicon' );
+
+import { isEnabled } from 'config';
+import PlansFeaturesMain from 'my-sites/plans-features-main';
+import QueryPlans from 'components/data/query-plans';
+import { isPlanFeaturesEnabled } from 'lib/plans';
 
 module.exports = React.createClass( {
 	displayName: 'PlansStep',
@@ -101,9 +108,25 @@ module.exports = React.createClass( {
 		);
 	},
 
+	plansFeaturesList: function() {
+		const {	hideFreePlan } = this.props;
+
+		return (
+			<div>
+				<QueryPlans />
+
+				<PlansFeaturesMain
+					hideFreePlan={ hideFreePlan }
+					isInSignup={ true }
+					onUpgradeClick={ this.onSelectPlan }
+					showFAQ={ false } />
+			</div>
+		);
+	},
+
 	plansSelection: function() {
-		let headerText = this.translate( 'Pick a plan that\'s right for you.' ),
-			subHeaderText = this.translate(
+		const headerText = this.translate( 'Pick a plan that\'s right for you.' );
+		const subHeaderText = this.translate(
 				'Not sure which plan to choose? Take a look at our {{a}}plan comparison chart{{/a}}.', {
 					components: { a: <a
 						href={ this.comparePlansUrl() }
@@ -121,7 +144,33 @@ module.exports = React.createClass( {
 				fallbackHeaderText={ headerText }
 				fallbackSubHeaderText={ subHeaderText }
 				signupProgressStore={ this.props.signupProgressStore }
+				isWideLayout={ false }
 				stepContent={ this.plansList() } />
+		);
+	},
+
+	plansFeaturesSelection: function() {
+		const {
+			flowName,
+			stepName,
+			positionInFlow,
+			signupProgressStore
+		} = this.props;
+
+		const translate = this.translate;
+
+		const headerText = translate( "Pick a plan that's right for you." );
+
+		return (
+			<StepWrapper
+				flowName={ flowName }
+				stepName={ stepName }
+				positionInFlow={ positionInFlow }
+				headerText={ headerText }
+				fallbackHeaderText={ headerText }
+				signupProgressStore={ signupProgressStore }
+				isWideLayout={ true }
+				stepContent={ this.plansFeaturesList() } />
 		);
 	},
 
@@ -138,11 +187,26 @@ module.exports = React.createClass( {
 	},
 
 	render: function() {
-		return <div className="plans plans-step has-no-sidebar">
-			{
-				'compare' === this.props.stepSectionName
+		const personalPlanTestEnabled = isEnabled( 'plans/personal-plan' );
+
+		const classes = classNames( 'plans plans-step', {
+			'has-no-sidebar': true,
+			'is-wide-layout': isPlanFeaturesEnabled(),
+			'has-personal-plan': personalPlanTestEnabled
+		} );
+
+		const renderPlans = () => (
+			'compare' === this.props.stepSectionName
 				? this.plansCompare()
 				: this.plansSelection()
+		);
+
+		const renderPlansFeatures = () => ( this.plansFeaturesSelection() );
+
+		return <div className={ classes }>
+			{ isPlanFeaturesEnabled()
+				? renderPlansFeatures()
+				: renderPlans()
 			}
 		</div>;
 	}

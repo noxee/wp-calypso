@@ -60,7 +60,7 @@ module.exports = React.createClass( {
 	},
 
 	render: function() {
-		const items = MediaUtils.sortItemsByDate( this.props.items );
+		const { items } = this.props;
 
 		return (
 			<div className="editor-media-modal-detail">
@@ -75,7 +75,8 @@ module.exports = React.createClass( {
 					hasPreviousItem={ this.props.selectedIndex - 1 >= 0 }
 					hasNextItem={ this.props.selectedIndex + 1 < items.length }
 					onShowPreviousItem={ this.incrementIndex.bind( this, -1 ) }
-					onShowNextItem={ this.incrementIndex.bind( this, 1 ) } />
+					onShowNextItem={ this.incrementIndex.bind( this, 1 ) }
+					onEdit={ this.props.onEdit } />
 			</div>
 		);
 	}

@@ -10,7 +10,7 @@ import { connect } from 'react-redux';
 /**
  * Internal dependencies
  */
-import MasterbarMinimal from 'layout/masterbar/minimal';
+import MasterbarLoggedOut from 'layout/masterbar/logged-out';
 
 const LayoutLoggedOut = ( {
 	primary,
@@ -18,25 +18,26 @@ const LayoutLoggedOut = ( {
 	tertiary,
 	section,
 } ) => {
-	const classes = classNames( 'wp layout', {
+	const classes = classNames( 'layout', {
 		[ 'is-group-' + section.group ]: !! section,
 		[ 'is-section-' + section.name ]: !! section,
 		'focus-content': true,
-		'has-no-sidebar': true // Logged-out never has a sidebar
+		'has-no-sidebar': true, // Logged-out never has a sidebar
+		'wp-singletree-layout': !! primary,
 	} );
 
 	return (
 		<div className={ classes }>
-			<MasterbarMinimal url="/" />
-			<div id="content" className="wp-content">
-				<div id="primary" className="wp-primary wp-section">
+			<MasterbarLoggedOut title={ section.title } />
+			<div id="content" className="layout__content">
+				<div id="primary" className="layout__primary">
 					{ primary }
 				</div>
-				<div id="secondary" className="wp-secondary">
+				<div id="secondary" className="layout__secondary">
 					{ secondary }
 				</div>
 			</div>
-			<div id="tertiary" className="wp-overlay fade-background">
+			<div id="tertiary">
 				{ tertiary }
 			</div>
 		</div>

@@ -1,22 +1,21 @@
 /**
  * External dependencies
  */
-var React = require( 'react' ),
-	classNames = require( 'classnames' );
+import React from 'react';
+import classNames from 'classnames';
 
 /**
  * Internal dependencies
  */
+import ElementChart from 'components/chart';
+import Legend from 'components/chart/legend';
+import StatTabs from '../stats-tabs';
+import analytics from 'lib/analytics';
+import observe from 'lib/mixins/data-observe';
+import StatsModulePlaceholder from '../stats-module/placeholder';
+import Card from 'components/card';
 
-var ElementChart = require( 'components/chart' ),
-	Legend = require( 'components/chart/legend' ),
-	StatTabs = require( '../stats-tabs' ),
-	analytics = require( 'lib/analytics' ),
-	observe = require( 'lib/mixins/data-observe' ),
-	StatsModulePlaceholder = require( '../stats-module/placeholder' ),
-	Card = require( 'components/card' );
-
-module.exports = React.createClass( {
+export default React.createClass( {
 	displayName: 'StatModuleChartTabs',
 
 	mixins: [ observe( 'visitsList', 'activeTabVisitsList' ) ],
@@ -237,12 +236,14 @@ module.exports = React.createClass( {
 		}
 
 		return (
-			<Card className={ classNames.apply( null, classes ) }>
-				<Legend tabs={ this.props.charts } activeTab={ activeTab } availableCharts={ availableCharts } activeCharts={ this.state.activeLegendCharts } clickHandler={ this.onLegendClick } />
-				<StatsModulePlaceholder className="is-chart" isLoading={ activeTabLoading } />
-				<ElementChart loading={ activeTabLoading } data={ data } barClick={ this.props.barClick } />
-				<StatTabs dataList={ visitsList } tabs={ this.props.charts } switchTab={ this.props.switchTab } selectedTab={ this.props.chartTab } activeIndex={ this.props.queryDate } activeKey="period" />
-			</Card>
+			<div>
+				<Card className={ classNames.apply( null, classes ) }>
+					<Legend tabs={ this.props.charts } activeTab={ activeTab } availableCharts={ availableCharts } activeCharts={ this.state.activeLegendCharts } clickHandler={ this.onLegendClick } />
+					<StatsModulePlaceholder className="is-chart" isLoading={ activeTabLoading } />
+					<ElementChart loading={ activeTabLoading } data={ data } barClick={ this.props.barClick } />
+					<StatTabs dataList={ visitsList } tabs={ this.props.charts } switchTab={ this.props.switchTab } selectedTab={ this.props.chartTab } activeIndex={ this.props.queryDate } activeKey="period" />
+				</Card>
+			</div>
 		);
 	}
 } );

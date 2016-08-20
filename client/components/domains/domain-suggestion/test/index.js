@@ -1,45 +1,38 @@
 /**
  * External Dependencies
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
-import ReactDom from 'react-dom';
 import React from 'react';
-import TestUtils from 'react-addons-test-utils';
+import { expect } from 'chai';
+import { shallow } from 'enzyme';
+import identity from 'lodash/identity';
 
 /**
  * Internal Dependencies
  */
-import DomainSuggestion from 'components/domains/domain-suggestion';
-import DomainProductPrice from 'components/domains/domain-product-price';
 import useFakeDom from 'test/helpers/use-fake-dom';
+import useMockery from 'test/helpers/use-mockery';
+import EmptyComponent from 'test/helpers/react/empty-component';
 
 describe( 'Domain Suggestion', function() {
+	let DomainSuggestion;
+
 	useFakeDom();
-
-	beforeEach( function() {
-		DomainSuggestion.prototype.__reactAutoBindMap.translate = sinon.stub();
-		DomainProductPrice.prototype.__reactAutoBindMap.translate = sinon.stub();
+	useMockery( ( mockery ) => {
+		mockery.registerMock( 'components/plans/premium-popover', EmptyComponent );
 	} );
 
-	afterEach( function() {
-		delete DomainSuggestion.prototype.__reactAutoBindMap.translate;
-		delete DomainProductPrice.prototype.__reactAutoBindMap.translate;
+	before( () => {
+		DomainSuggestion = require( 'components/domains/domain-suggestion' );
+		DomainSuggestion.prototype.translate = identity;
 	} );
 
-	describe( 'added domain', function() {
-		it( 'should show a checkbox when in cart', function() {
-			var suggestionComponent = TestUtils.renderIntoDocument( <DomainSuggestion isAdded={ true } /> );
-
-			expect( suggestionComponent.refs.checkmark ).to.exist;
-		} );
-
-		it( 'should show the button label when not in cart', function() {
-			var buttonLabel = 'Hello',
-				suggestionComponent = TestUtils.renderIntoDocument(
-					<DomainSuggestion isAdded={ false } buttonLabel={ buttonLabel } />
-				);
-			expect( ReactDom.findDOMNode( suggestionComponent.refs.button ).textContent ).to.equal( buttonLabel );
+	describe( 'has attributes', () => {
+		it( 'should have data-e2e-domain attribute for e2e testing', () => {
+			const domainSuggestion = shallow( <DomainSuggestion
+				domain="example.com" isAdded={ false }/> );
+			const domainSuggestionButton = domainSuggestion.find( `.domain-suggestion__select-button` );
+			expect( domainSuggestionButton.length ).to.equal( 1 );
+			expect( domainSuggestionButton.props()[ 'data-e2e-domain' ] ).to.equal( 'example.com' );
 		} );
 	} );
 } );

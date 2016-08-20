@@ -11,7 +11,6 @@ import { expect } from 'chai';
  */
 import useMockery from 'test/helpers/use-mockery';
 import useFakeDom from 'test/helpers/use-fake-dom';
-import useI18n from 'test/helpers/use-i18n';
 import { useSandbox } from 'test/helpers/use-sinon';
 
 /**
@@ -33,7 +32,6 @@ describe( 'EditorMediaModal', function() {
 
 	useMockery();
 	useFakeDom();
-	useI18n();
 	useSandbox( ( newSandbox ) => {
 		sandbox = newSandbox;
 		deleteMedia = sandbox.stub();
@@ -42,7 +40,7 @@ describe( 'EditorMediaModal', function() {
 
 	before( function() {
 		ModalViews = require( '../constants' ).Views;
-		i18n = require( 'lib/mixins/i18n' );
+		i18n = require( 'i18n-calypso' );
 
 		// Mockery
 		mockery.registerMock( 'my-sites/media-library', EMPTY_COMPONENT );
@@ -56,7 +54,7 @@ describe( 'EditorMediaModal', function() {
 		mockery.registerMock( 'lib/media/actions', { delete: deleteMedia } );
 
 		EditorMediaModal = require( '../' );
-		EditorMediaModal.prototype.__reactAutoBindMap.translate = i18n.translate;
+		EditorMediaModal.prototype.translate = i18n.translate;
 	} );
 
 	it( 'should prompt to delete a single item from the list view', function( done ) {

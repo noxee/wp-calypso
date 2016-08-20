@@ -13,10 +13,15 @@ var SSR_READY = '/** @ssr-ready **/';
 var IGNORED_MODULES = [
 	'config', // Different modules on client & server
 	'lib/wp', // Different modules on client & server
+	'lib/formatting', // Different modules on client & server
 	'lib/analytics', // nooped on the server until we develop an isomorphic version
 	'lib/route', // nooped on the server until we can extract the isomorphic bits
 	'lib/upgrades/actions', // nooped on the server as it still uses the singleton Flux architecture
-	'lib/mixins/i18n', // ignore this until we make it work properly on the server
+	'i18n-calypso', // ignore this until we make it work properly on the server
+	'my-sites/themes/thanks-modal', // stubbed on the server until we develop an isomorphic version
+	'my-sites/themes/themes-site-selector-modal', // stubbed on the server until we develop an isomorphic version
+	'state/ui/editor/selectors', // stubbed on the server until all the dependencies are @ssr-ready
+	'state/posts/selectors', // stubbed on the server until all the dependencies are @ssr-ready
 ];
 
 function PragmaCheckPlugin( options ) {
@@ -37,6 +42,7 @@ function scanDependencies( module, compilation ) {
 		if ( includes( dep.module.request, 'babel-loader' ) &&
 				dep.module._source &&
 				! includes( IGNORED_MODULES, dep.request ) &&
+				! includes( IGNORED_MODULES, dep.module.rawRequest ) &&
 				! includes( dep.module._source._value, SSR_READY ) ) {
 			compilation.errors.push( PLUGIN_TITLE + ': ' + module.rawRequest + ', dependency ' + dep.module.rawRequest + ' is not ' + SSR_READY );
 		}

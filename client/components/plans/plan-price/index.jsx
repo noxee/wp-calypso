@@ -3,16 +3,17 @@
  */
 import isUndefined from 'lodash/isUndefined';
 import React from 'react';
+import get from 'lodash/get';
+import { isJetpackMonthlyPlan } from 'lib/products-values';
 
 /**
  * Internal dependencies
  */
-import config from 'config';
 import WpcomPlanPrice from 'my-sites/plans/wpcom-plan-price';
 
 const PlanPrice = React.createClass( {
 	getFormattedPrice( plan ) {
-		let rawPrice, formattedPrice;
+		let rawPrice, formattedPrice, months;
 
 		if ( plan ) {
 			// the properties of a plan object from sites-list is snake_case
@@ -24,12 +25,18 @@ const PlanPrice = React.createClass( {
 				return this.translate( 'Free', { context: 'Zero cost product price' } );
 			}
 
-			if ( config.isEnabled( 'monthly-plan-pricing' ) ) {
-				const monthlyPrice = +( rawPrice / 12 ).toFixed( 2 );
-				formattedPrice = formattedPrice.replace( rawPrice, monthlyPrice );
-			}
+			months = isJetpackMonthlyPlan( plan ) ? 1 : 12;
 
-			return formattedPrice;
+			// could get $5.95, A$4.13, ¥298, €3,50, etc…
+			const getCurrencySymbol = price => /(\D+)\d+/.exec( price )[ 1 ];
+			const currencyDigits = currencySymbol => get( {
+				'¥': 0
+			}, currencySymbol, 2 );
+
+			const currencySymbol = getCurrencySymbol( formattedPrice );
+			const monthlyPrice = ( rawPrice / months ).toFixed( currencyDigits( currencySymbol ) );
+
+			return `${ currencySymbol }${ monthlyPrice }`;
 		}
 
 		return this.translate( 'Loading' );
@@ -55,10 +62,16 @@ const PlanPrice = React.createClass( {
 			return <div className="plan-price is-placeholder" />;
 		}
 
-		if ( config.isEnabled( 'monthly-plan-pricing' ) && plan.raw_price !== 0 ) {
-			periodLabel = this.translate( 'per month, billed yearly' );
+		if ( ! plan ) {
+			periodLabel = '';
+		} else if ( plan.raw_price > 0 ) {
+			if ( isJetpackMonthlyPlan( plan ) ) {
+				periodLabel = this.translate( 'per month, billed monthly' );
+			} else {
+				periodLabel = this.translate( 'per month, billed yearly' );
+			}
 		} else {
-			periodLabel = hasDiscount ? this.translate( 'due today when you upgrade' ) : plan.bill_period_label
+			periodLabel = hasDiscount ? this.translate( 'due today when you upgrade' ) : plan.bill_period_label;
 		}
 
 		return (

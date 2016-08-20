@@ -10,14 +10,17 @@ import React from 'react';
  */
 import Head from 'layout/head';
 
-const ThemesHead = ( { title, tier, children } ) => (
+const ThemesHead = ( { title, description, canonicalUrl, type, image, tier, children } ) => (
 	<Head
 		title={ title ? title : get( 'title', tier ) }
-		description={ get( 'description', tier ) }
-		canonicalUrl={ get( 'canonicalUrl', tier ) } >
+		description={ description ? description : get( 'description', tier ) }
+		canonicalUrl={ canonicalUrl ? canonicalUrl : get( 'canonicalUrl', tier ) }
+		type={ type ? type : 'website' }
+		siteName={ 'WordPress.com' }
+		image={ image ? image : {} } >
 		{ children }
 	</Head>
-)
+);
 
 ThemesHead.propTypes = {
 	title: React.PropTypes.string,
@@ -33,14 +36,14 @@ const themesMeta = {
 	free: {
 		title: 'Free WordPress Themes — WordPress.com',
 		description: 'Discover Free WordPress Themes on the WordPress.com Theme Showcase.',
-		canonicalUrl: 'https://wordpress.com/design/type/free',
+		canonicalUrl: 'https://wordpress.com/design/free',
 	},
 	premium: {
 		title: 'Premium WordPress Themes — WordPress.com',
 		description: 'Discover Premium WordPress Themes on the WordPress.com Theme Showcase.',
-		canonicalUrl: 'https://wordpress.com/design/type/premium',
+		canonicalUrl: 'https://wordpress.com/design/premium',
 	}
-}
+};
 
 function get( key, tier ) {
 	return tier in themesMeta && key in themesMeta[ tier ]

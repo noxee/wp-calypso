@@ -1,5 +1,6 @@
 [
   "env",
+  "env_id",
   "client_slug",
   "hostname",
   "wpcom_user_bootstrap",
@@ -17,7 +18,6 @@
   "google_analytics_key",
   "google_adwords_conversion_id",
   "olark",
-  "muse_supported_themes",
   "languages",
   "jetpack_min_version",
   "signup_url",
@@ -26,6 +26,9 @@
   "siftscience_key",
   "facebook_api_key",
   "discover_blog_id",
+  "daily_post_blog_id",
   "support-user",
-  "sync-handler-defaults"
+  "sync-handler-defaults",
+  "project",
+  "reader_cold_start_graduation_threshold"
 ]

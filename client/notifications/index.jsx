@@ -5,13 +5,13 @@ var React = require( 'react' ),
 	config = require( 'config' ),
 	debug = require( 'debug' )( 'calypso:notifications' ),
 	assign = require( 'lodash/assign' ),
-	classes = require( 'component-classes' ),
 	oAuthToken = require( 'lib/oauth-token' );
 
 /**
  * Internal dependencies
  */
-var config = require( 'config' ),
+var analytics = require( 'lib/analytics' ),
+	config = require( 'config' ),
 	user = require( 'lib/user' )();
 
 /**
@@ -56,7 +56,7 @@ var Notifications = React.createClass({
 			this.setState( { 'shownOnce' : true, 'widescreen': false } );
 		}
 
-		if ( classes( document.documentElement ).has( 'touch' ) ) {
+		if ( document.documentElement.classList.contains( 'touch' ) ) {
 			// prevent scrolling on main page on mobile
 			if ( this.props.visible && ! nextProps.visible ) {
 				document.body.removeEventListener( 'touchmove', this.preventDefault, false );
@@ -86,6 +86,11 @@ var Notifications = React.createClass({
 		if ( typeof document.hidden !== 'undefined' ) {
 			document.addEventListener( 'visibilitychange', this.handleVisibilityChange );
 		}
+
+		if ( 'serviceWorker' in window.navigator && 'addEventListener' in window.navigator.serviceWorker ) {
+			window.navigator.serviceWorker.addEventListener( 'message', this.receiveServiceWorkerMessage );
+			this.postServiceWorkerMessage( { action: 'sendQueuedMessages' } );
+		}
 	},
 
 	componentWillUnmount: function() {
@@ -98,6 +103,10 @@ var Notifications = React.createClass({
 
 		if ( typeof document.hidden !== 'undefined' ) {
 			document.removeEventListener( 'visibilitychange', this.handleVisibilityChange );
+		}
+
+		if ( 'serviceWorker' in window.navigator && 'removeEventListener' in window.navigator.serviceWorker ) {
+			window.navigator.serviceWorker.removeEventListener( 'message', this.receiveServiceWorkerMessage );
 		}
 	},
 
@@ -180,6 +189,35 @@ var Notifications = React.createClass({
 		}
 	},
 
+	receiveServiceWorkerMessage: function( event ) {
+		// Receives messages from the service worker
+		// Firefox sets event.origin to "" for service worker messages
+		if ( event.origin && event.origin !== document.origin ) {
+			return;
+		}
+
+		if ( !( 'action' in event.data ) ) {
+			return;
+		}
+
+		switch ( event.data.action ) {
+			case 'openPanel':
+				// checktoggle closes panel with no parameters
+				this.props.checkToggle();
+				// ... and toggles when the 2nd parameter is true
+				this.props.checkToggle( null, true );
+				// force refresh the panel
+				this.postMessage( { action: 'refreshNotes' } );
+				break;
+			case 'trackClick':
+				analytics.tracks.recordEvent( 'calypso_web_push_notification_clicked', {
+					push_notification_note_id: event.data.notification.note_id,
+					push_notification_type: event.data.notification.type
+				} );
+				break;
+		}
+	},
+
 	postMessage: function( message ) {
 		var iframeMessage = { 'type': 'notesIframeMessage' };
 		iframeMessage = assign( {}, iframeMessage, message );
@@ -190,6 +228,16 @@ var Notifications = React.createClass({
 		} else {
 			// save only the latest message to send when iframe is loaded
 			this.queuedMessage = message;
+		}
+	},
+
+	postServiceWorkerMessage: function( message ) {
+		if ( 'serviceWorker' in window.navigator ) {
+			window.navigator.serviceWorker.ready.then( ( serviceWorkerRegistration ) => {
+				if ( 'active' in serviceWorkerRegistration ) {
+					serviceWorkerRegistration.active.postMessage( message );
+				}
+			} );
 		}
 	},
 
@@ -213,7 +261,7 @@ var Notifications = React.createClass({
 		widgetURL += '?locale=' + localeSlug;
 
 		// cache buster
-		widgetURL += '&' + now.getFullYear() + ( now.getMonth() + 1 ) + now.getDate();
+		widgetURL += '&' + now.getFullYear() + ( now.getMonth() + 1 ) + now.getDate() + ( now.getHours() + 10 );
 
 		if ( this.state.widescreen && this.props.visible ) {
 			frameClasses.push( 'widescreen' );

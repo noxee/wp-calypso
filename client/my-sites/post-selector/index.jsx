@@ -3,8 +3,7 @@
  */
 import React, { PropTypes } from 'react';
 import PureRenderMixin from 'react-pure-render/mixin';
-import mapKeys from 'lodash/mapKeys';
-import snakeCase from 'lodash/snakeCase';
+import { reduce, snakeCase } from 'lodash';
 
 /**
  * Internal dependencies
@@ -43,7 +42,6 @@ export default React.createClass( {
 
 	getInitialState() {
 		return {
-			page: 1,
 			search: ''
 		};
 	},
@@ -51,7 +49,6 @@ export default React.createClass( {
 	onSearch( term ) {
 		if ( term !== this.state.search ) {
 			this.setState( {
-				page: 1,
 				search: term
 			} );
 		}
@@ -59,30 +56,16 @@ export default React.createClass( {
 
 	getQuery() {
 		const { type, status, excludeTree, orderBy, order } = this.props;
-		const { page, search } = this.state;
-		return mapKeys( { type, status, excludeTree, orderBy, order, page, search }, ( value, key ) => {
-			return snakeCase( key );
-		} );
-	},
+		const { search } = this.state;
 
-	componentWillReceiveProps( nextProps ) {
-		const isChangingQuery = [
-			'type',
-			'status',
-			'excludeTree',
-			'orderBy',
-			'order'
-		].some( ( prop ) => nextProps[ prop ] !== this.props[ prop ] );
+		return reduce( { type, status, excludeTree, orderBy, order, search }, ( memo, value, key ) => {
+			if ( null === value || undefined === value ) {
+				return memo;
+			}
 
-		if ( isChangingQuery ) {
-			this.setState( { page: 1 } );
-		}
-	},
-
-	incrementPage() {
-		this.setState( {
-			page: this.state.page + 1
-		} );
+			memo[ snakeCase( key ) ] = value;
+			return memo;
+		}, {} );
 	},
 
 	render() {
@@ -92,7 +75,6 @@ export default React.createClass( {
 			<PostSelectorPosts
 				siteId={ siteId }
 				query={ this.getQuery() }
-				onNextPage={ this.incrementPage }
 				onSearch={ this.onSearch }
 				multiple={ multiple }
 				onChange={ onChange }

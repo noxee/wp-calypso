@@ -2,6 +2,7 @@
  * External dependencies
  */
 import React from 'react';
+import classNames from 'classnames';
 
 /**
  * Internal dependencies
@@ -12,6 +13,18 @@ import config from 'config';
 
 export default React.createClass( {
 	displayName: 'StepWrapper',
+
+	renderBack: function() {
+		return (
+			<NavigationLink
+				direction="back"
+				flowName={ this.props.flowName }
+				positionInFlow={ this.props.positionInFlow }
+				stepName={ this.props.stepName }
+				backUrl={ this.props.backUrl }
+				signupProgressStore={ this.props.signupProgressStore } />
+		);
+	},
 
 	renderSkip: function() {
 		if ( this.props.goToNextStep ) {
@@ -53,25 +66,24 @@ export default React.createClass( {
 	},
 
 	render: function() {
+		const { stepContent, headerButton } = this.props;
+		const classes = classNames( 'step-wrapper', {
+			'is-wide-layout': this.props.isWideLayout
+		} );
+
 		return (
-			<div className="step-wrapper">
+			<div className={ classes }>
 				<StepHeader
 					headerText={ this.headerText() }
 					subHeaderText={ this.subHeaderText() }>
-					{ config.isEnabled( 'jetpack/calypso-first-signup-flow' )
-						? ( this.props.headerButton )
+					{ config.isEnabled( 'jetpack/connect' )
+						? ( headerButton )
 						: null }
 				</StepHeader>
-				<div className="is-animated-content">
-					{ this.props.stepContent }
+				<div className="step-wrapper__content is-animated-content">
+					{ stepContent }
 					<div className="step-wrapper__buttons">
-						<NavigationLink
-							direction="back"
-							flowName={ this.props.flowName }
-							positionInFlow={ this.props.positionInFlow }
-							stepName={ this.props.stepName }
-							backUrl={ this.props.backUrl }
-							signupProgressStore={ this.props.signupProgressStore } />
+						{ this.renderBack() }
 						{ this.renderSkip() }
 					</div>
 				</div>

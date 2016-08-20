@@ -10,10 +10,9 @@ import {
 	getSelectedSite,
 	getSelectedSiteId,
 	getSectionName,
-	getGuidesTourState,
+	isSectionIsomorphic,
+	hasSidebar
 } from '../selectors';
-import guidesToursConfig from 'guidestours/config';
-import useI18n from 'test/helpers/use-i18n';
 
 describe( 'selectors', () => {
 	describe( '#getSelectedSite()', () => {
@@ -31,7 +30,7 @@ describe( 'selectors', () => {
 			const selected = getSelectedSite( {
 				sites: {
 					items: {
-						2916284: { ID: 2916284, name: 'WordPress.com Example Blog' }
+						2916284: { ID: 2916284, name: 'WordPress.com Example Blog', URL: 'https://example.com' }
 					}
 				},
 				ui: {
@@ -39,7 +38,20 @@ describe( 'selectors', () => {
 				}
 			} );
 
-			expect( selected ).to.eql( { ID: 2916284, name: 'WordPress.com Example Blog' } );
+			expect( selected ).to.eql( {
+				ID: 2916284,
+				name: 'WordPress.com Example Blog',
+				URL: 'https://example.com',
+				domain: 'example.com',
+				hasConflict: false,
+				is_customizable: false,
+				is_previewable: false,
+				options: {
+					default_post_format: 'standard',
+				},
+				slug: 'example.com',
+				title: 'WordPress.com Example Blog',
+			} );
 		} );
 	} );
 
@@ -93,36 +105,59 @@ describe( 'selectors', () => {
 		} );
 	} );
 
-	describe( '#getGuidesTourState()', () => {
-		useI18n();
-		it( 'should return an empty object if no state is present', () => {
-			const tourState = getGuidesTourState( {
+	describe( '#isSectionIsomorphic()', () => {
+		it( 'should return false if there is no section currently selected', () => {
+			const selected = isSectionIsomorphic( {
 				ui: {
-					shouldShow: false,
-					guidesTour: false,
+					section: false
 				}
 			} );
 
-			expect( tourState ).to.deep.equal( { shouldShow: false, stepConfig: false } );
+			expect( selected ).to.be.false;
 		} );
 
-		it( 'should include the config of the current tour step', () => {
-			const tourState = getGuidesTourState( {
-				ui: {
-					guidesTour: {
-						stepName: 'sidebar',
-						shouldShow: true,
-						tour: 'main',
-						siteId: 2916284,
-					}
-				}
+		it( 'should return true if current section is isomorphic', () => {
+			const section = {
+				enableLoggedOut: true,
+				group: 'sites',
+				isomorphic: true,
+				module: 'my-sites/themes',
+				name: 'themes',
+				paths: [ '/design' ],
+				secondary: false
+			};
+
+			const selected = isSectionIsomorphic( {
+				ui: { section }
 			} );
 
-			const stepConfig = guidesToursConfig.get().sidebar;
+			expect( selected ).to.be.true;
+		} );
+	} );
 
-			expect( tourState ).to.deep.equal( Object.assign( {}, tourState, {
-				stepConfig
-			} ) );
+	describe( '#hasSidebar()', () => {
+		it( 'should return false if set', () => {
+			expect( hasSidebar( { ui: { hasSidebar: false } } ) ).to.be.false;
+		} );
+
+		it( 'should be true if true and secondary does not override it', () => {
+			expect( hasSidebar( {
+				ui: {
+					hasSidebar: true,
+					section: {}
+				}
+			} ) ).to.be.true;
+		} );
+
+		it( 'should fall back to the secondary prop on the current section when hasSidebar is true', () => {
+			expect( hasSidebar( {
+				ui: {
+					hasSidebar: true,
+					section: {
+						secondary: false
+					}
+				}
+			} ) ).to.be.false;
 		} );
 	} );
 } );

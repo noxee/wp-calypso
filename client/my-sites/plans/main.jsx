@@ -4,36 +4,43 @@
 import { connect } from 'react-redux';
 import page from 'page';
 import React from 'react';
+import find from 'lodash/find';
 
 /**
  * Internal dependencies
  */
 import analytics from 'lib/analytics';
-import { fetchSitePlans } from 'state/sites/plans/actions';
-import { getCurrentPlan } from 'lib/plans';
 import { getPlansBySite } from 'state/sites/plans/selectors';
+import { getCurrentPlan } from 'lib/plans';
+import { getPlans } from 'state/plans/selectors';
+import { getSelectedSiteId } from 'state/ui/selectors';
 import Gridicon from 'components/gridicon';
+import { isEnabled } from 'config';
 import { isJpphpBundle } from 'lib/products-values';
 import Main from 'components/main';
 import Notice from 'components/notice';
 import observe from 'lib/mixins/data-observe';
 import paths from './paths';
 import PlanList from 'components/plans/plan-list' ;
+import PlansFeaturesMain from 'my-sites/plans-features-main';
 import PlanOverview from './plan-overview';
-import { shouldFetchSitePlans } from 'lib/plans';
+import { plansLink, isPlanFeaturesEnabled } from 'lib/plans';
 import SidebarNavigation from 'my-sites/sidebar-navigation';
 import { SUBMITTING_WPCOM_REQUEST } from 'lib/store-transactions/step-types';
 import UpgradesNavigation from 'my-sites/upgrades/navigation';
+import QueryPlans from 'components/data/query-plans';
+import QuerySitePlans from 'components/data/query-site-plans';
+import { PLAN_MONTHLY_PERIOD } from 'lib/plans/constants';
 
 const Plans = React.createClass( {
-	mixins: [ observe( 'sites', 'plans' ) ],
+	mixins: [ observe( 'sites' ) ],
 
 	propTypes: {
 		cart: React.PropTypes.object.isRequired,
 		context: React.PropTypes.object.isRequired,
 		destinationType: React.PropTypes.string,
-		plans: React.PropTypes.object.isRequired,
-		fetchSitePlans: React.PropTypes.func.isRequired,
+		intervalType: React.PropTypes.string,
+		plans: React.PropTypes.array.isRequired,
 		sites: React.PropTypes.object.isRequired,
 		sitePlans: React.PropTypes.object.isRequired,
 		transaction: React.PropTypes.object.isRequired
@@ -41,20 +48,6 @@ const Plans = React.createClass( {
 
 	getInitialState() {
 		return { openPlan: '' };
-	},
-
-	componentDidMount() {
-		this.updateSitePlans( this.props.sitePlans );
-	},
-
-	componentWillReceiveProps( nextProps ) {
-		this.updateSitePlans( nextProps.sitePlans );
-	},
-
-	updateSitePlans( sitePlans ) {
-		const selectedSite = this.props.sites.getSelectedSite();
-
-		this.props.fetchSitePlans( sitePlans, selectedSite );
 	},
 
 	openPlan( planId ) {
@@ -66,26 +59,57 @@ const Plans = React.createClass( {
 	},
 
 	comparePlansLink() {
+		if ( this.props.plans.length <= 0 ) {
+			return '';
+		}
+
 		const selectedSite = this.props.sites.getSelectedSite();
-		let url = '/plans/compare',
+		let url = plansLink( '/plans/compare', selectedSite, this.props.intervalType ),
 			compareString = this.translate( 'Compare Plans' );
 
 		if ( selectedSite.jetpack ) {
 			compareString = this.translate( 'Compare Options' );
 		}
 
-		if ( this.props.plans.get().length <= 0 ) {
-			return '';
-		}
-
-		if ( selectedSite ) {
-			url += '/' + selectedSite.slug;
-		}
-
 		return (
 			<a href={ url } className="compare-plans-link" onClick={ this.recordComparePlansClick }>
 				<Gridicon icon="clipboard" size={ 18 } />
 				{ compareString }
+			</a>
+		);
+	},
+
+	showMonthlyPlansLink() {
+		const selectedSite = this.props.sites.getSelectedSite();
+		if ( ! selectedSite.jetpack ) {
+			return '';
+		}
+
+		let intervalType = this.props.intervalType,
+			showString = '';
+		const hasMonthlyPlans = find( this.props.sitePlans.data, { interval: PLAN_MONTHLY_PERIOD } );
+
+		if ( hasMonthlyPlans === undefined ) {
+			//No monthly plan found for this site so no need for a monthly plans link
+			return '';
+		}
+
+		if ( 'monthly' === intervalType ) {
+			intervalType = '';
+			showString = this.translate( 'Show Yearly Plans' );
+		} else {
+			intervalType = 'monthly';
+			showString = this.translate( 'Show Monthly Plans' );
+		}
+
+		return (
+			<a
+				href={ plansLink( '/plans', selectedSite, intervalType ) }
+				className="show-monthly-plans-link"
+				onClick={ this.recordComparePlansClick }
+			>
+				<Gridicon icon="refresh" size={ 18 } />
+				{ showString }
 			</a>
 		);
 	},
@@ -105,8 +129,12 @@ const Plans = React.createClass( {
 	},
 
 	render() {
-		const selectedSite = this.props.sites.getSelectedSite();
-		let hasJpphpBundle,
+		const selectedSite = this.props.sites.getSelectedSite(),
+			mainClassNames = {},
+			siteId = this.props.siteId,
+			isPersonalPlanEnabled = isEnabled( 'plans/personal-plan' );
+
+		let	hasJpphpBundle,
 			currentPlan;
 
 		if ( this.props.sitePlans.hasLoadedFromServer ) {
@@ -126,11 +154,16 @@ const Plans = React.createClass( {
 			);
 		}
 
+		mainClassNames[ 'has-personal-plan' ] = ! isPlanFeaturesEnabled() && isPersonalPlanEnabled;
+
 		return (
 			<div>
 				{ this.renderNotice() }
 
-				<Main>
+				<Main
+					className={ mainClassNames }
+					wideLayout={ isPlanFeaturesEnabled() }
+				>
 					<SidebarNavigation />
 
 					<div id="plans" className="plans has-sidebar">
@@ -140,15 +173,32 @@ const Plans = React.createClass( {
 							cart={ this.props.cart }
 							selectedSite={ selectedSite } />
 
-						<PlanList
-							site={ selectedSite }
-							plans={ this.props.plans.get() }
-							sitePlans={ this.props.sitePlans }
-							onOpen={ this.openPlan }
-							cart={ this.props.cart }
-							isSubmitting={ this.props.transaction.step.name === SUBMITTING_WPCOM_REQUEST } />
+						{ ! hasJpphpBundle && this.showMonthlyPlansLink() }
 
-						{ ! hasJpphpBundle && this.comparePlansLink() }
+						<QueryPlans />
+						<QuerySitePlans siteId={ siteId } />
+
+						{
+							isPlanFeaturesEnabled()
+								? <PlansFeaturesMain
+									site={ selectedSite }
+									intervalType={ this.props.intervalType }
+									hideFreePlan={ true }
+									selectedFeature={ this.props.selectedFeature }
+								/>
+
+								: <PlanList
+									site={ selectedSite }
+									plans={ this.props.plans }
+									sitePlans={ this.props.sitePlans }
+									onOpen={ this.openPlan }
+									cart={ this.props.cart }
+									intervalType={ this.props.intervalType }
+									isSubmitting={ this.props.transaction.step.name === SUBMITTING_WPCOM_REQUEST }
+								/>
+						}
+
+						{ ! hasJpphpBundle && ! isPlanFeaturesEnabled() && this.comparePlansLink() }
 					</div>
 				</Main>
 			</div>
@@ -159,16 +209,9 @@ const Plans = React.createClass( {
 export default connect(
 	( state, props ) => {
 		return {
-			sitePlans: getPlansBySite( state, props.sites.getSelectedSite() )
-		};
-	},
-	( dispatch ) => {
-		return {
-			fetchSitePlans( sitePlans, site ) {
-				if ( shouldFetchSitePlans( sitePlans, site ) ) {
-					dispatch( fetchSitePlans( site.ID ) );
-				}
-			}
+			plans: getPlans( state ),
+			sitePlans: getPlansBySite( state, props.sites.getSelectedSite() ),
+			siteId: getSelectedSiteId( state )
 		};
 	}
 )( Plans );

@@ -12,26 +12,35 @@ var connect = require( 'react-redux' ).connect,
  * Internal dependencies
  */
 var analytics = require( 'lib/analytics' ),
-	isValidFeatureKey = require( 'lib/plans' ).isValidFeatureKey,
 	cartItems = require( 'lib/cart-values' ).cartItems,
-	clearPurchases = require( 'lib/upgrades/actions/purchases' ).clearPurchases,
-	DomainDetailsForm = require( './domain-details-form' ),
-	hasDomainDetails = require( 'lib/store-transactions' ).hasDomainDetails,
-	observe = require( 'lib/mixins/data-observe' ),
-	fetchReceiptCompleted = require( 'state/receipts/actions' ).fetchReceiptCompleted,
 	clearSitePlans = require( 'state/sites/plans/actions' ).clearSitePlans,
-	purchasePaths = require( 'me/purchases/paths' ),
-	SecurePaymentForm = require( './secure-payment-form' ),
+	clearPurchases = require( 'state/purchases/actions' ).clearPurchases,
+	DomainDetailsForm = require( './domain-details-form' ),
+	fetchReceiptCompleted = require( 'state/receipts/actions' ).fetchReceiptCompleted,
 	getExitCheckoutUrl = require( 'lib/checkout' ).getExitCheckoutUrl,
-	upgradesActions = require( 'lib/upgrades/actions' ),
-	transactionStepTypes = require( 'lib/store-transactions/step-types' ),
+	getStoredCards = require( 'state/stored-cards/selectors' ).getStoredCards,
+	hasDomainDetails = require( 'lib/store-transactions' ).hasDomainDetails,
 	notices = require( 'notices' ),
-	supportPaths = require( 'lib/url/support' );
+	observe = require( 'lib/mixins/data-observe' ),
+	purchasePaths = require( 'me/purchases/paths' ),
+	QueryStoredCards = require( 'components/data/query-stored-cards' ),
+	SecurePaymentForm = require( './secure-payment-form' ),
+	supportPaths = require( 'lib/url/support' ),
+	themeItem = require( 'lib/cart-values/cart-items' ).themeItem,
+	transactionStepTypes = require( 'lib/store-transactions/step-types' ),
+	upgradesActions = require( 'lib/upgrades/actions' );
+
+import {
+	isValidFeatureKey,
+	getUpgradePlanSlugFromPath
+} from 'lib/plans';
+import { planItem as getCartItemForPlan } from 'lib/cart-values/cart-items';
 
 const Checkout = React.createClass( {
-	mixins: [ observe( 'sites', 'cards', 'productsList' ) ],
+	mixins: [ observe( 'sites', 'productsList' ) ],
 
 	propTypes: {
+		cards: React.PropTypes.array.isRequired,
 		selectedFeature: React.PropTypes.string
 	},
 
@@ -51,8 +60,8 @@ const Checkout = React.createClass( {
 		if ( this.props.cart.hasLoadedFromServer ) {
 			this.trackPageView();
 
-			if ( this.props.planName ) {
-				this.addPlanToCart();
+			if ( this.props.product ) {
+				this.addProductToCart();
 			}
 		}
 
@@ -64,8 +73,8 @@ const Checkout = React.createClass( {
 			// if the cart hadn't loaded when this mounted, record the page view when it loads
 			this.trackPageView( nextProps );
 
-			if ( this.props.planName ) {
-				this.addPlanToCart();
+			if ( this.props.product ) {
+				this.addProductToCart();
 			}
 		}
 	},
@@ -89,22 +98,34 @@ const Checkout = React.createClass( {
 		props = props || this.props;
 
 		analytics.tracks.recordEvent( 'calypso_checkout_page_view', {
-			saved_cards: props.cards.get().length,
+			saved_cards: props.cards.length,
 			is_renewal: cartItems.hasRenewalItem( props.cart )
 		} );
 	},
 
-	addPlanToCart: function() {
-		var planSlug = this.props.plans.getSlugFromPath( this.props.planName ),
-			planItem = cartItems.getItemForPlan( { product_slug: planSlug }, { isFreeTrial: false } );
+	addProductToCart: function() {
+		var planSlug = getUpgradePlanSlugFromPath( this.props.product ),
+			cartItem,
+			cartMeta;
 
-		upgradesActions.addItem( planItem );
+		if ( planSlug ) {
+			cartItem = getCartItemForPlan( planSlug );
+		}
+
+		if ( this.props.product.indexOf( 'theme' ) === 0 ) {
+			cartMeta = this.props.product.split( ':' )[1];
+			cartItem = themeItem( cartMeta );
+		}
+
+		if ( cartItem ) {
+			upgradesActions.addItem( cartItem );
+		}
 	},
 
 	redirectIfEmptyCart: function() {
 		var redirectTo = '/plans/';
 
-		if ( ! this.state.previousCart && this.props.planName ) {
+		if ( ! this.state.previousCart && this.props.product ) {
 			// the plan hasn't been added to the cart yet
 			return false;
 		}
@@ -143,7 +164,7 @@ const Checkout = React.createClass( {
 		var renewalItem,
 			receiptId = ':receiptId';
 
-		clearPurchases();
+		this.props.clearPurchases();
 
 		if ( cartItems.hasRenewalItem( this.props.cart ) ) {
 			renewalItem = cartItems.getRenewalItems( this.props.cart )[ 0 ];
@@ -231,6 +252,8 @@ const Checkout = React.createClass( {
 		return (
 			<div className="main main-column" role="main">
 				<div className="checkout">
+					<QueryStoredCards />
+
 					{ this.content() }
 				</div>
 			</div>
@@ -239,15 +262,14 @@ const Checkout = React.createClass( {
 } );
 
 module.exports = connect(
-	undefined,
-	function( dispatch ) {
+	function( state ) {
 		return {
-			clearSitePlans: function( siteId ) {
-				dispatch( clearSitePlans( siteId ) );
-			},
-			fetchReceiptCompleted: function( receiptId, data ) {
-				dispatch( fetchReceiptCompleted( receiptId, data ) );
-			}
+			cards: getStoredCards( state )
 		};
+	},
+	{
+		clearPurchases,
+		clearSitePlans,
+		fetchReceiptCompleted
 	}
 )( Checkout );

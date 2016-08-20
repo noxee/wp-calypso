@@ -17,6 +17,72 @@ describe( 'route', function() {
 		route = require( '../' );
 	} );
 
+	describe( '#addQueryArgs()', () => {
+		it( 'should error when args is not an object', () => {
+			var types = [
+				undefined,
+				1,
+				true,
+				[],
+				'test',
+				function() {}
+			];
+
+			types.forEach( type => {
+				expect( () => {
+					route.addQueryArgs( type );
+				} ).to.throw( Error );
+			} );
+		} );
+
+		it( 'should error when url is not a string', () => {
+			var types = [
+				{},
+				undefined,
+				1,
+				true,
+				[],
+				function() {}
+			];
+
+			types.forEach( type => {
+				expect( () => {
+					route.addQueryArgs( {}, type );
+				} ).to.throw( Error );
+			} );
+		} );
+
+		it( 'should return same URL with ending slash if passed empty object for args', () => {
+			const url = route.addQueryArgs( {}, 'https://wordpress.com' );
+			expect( url ).to.eql( 'https://wordpress.com/' );
+		} );
+
+		it( 'should add query args when URL has no args', () => {
+			const url = route.addQueryArgs( { foo: 'bar' }, 'https://wordpress.com' );
+			expect( url ).to.eql( 'https://wordpress.com/?foo=bar' );
+		} );
+
+		it( 'should persist existing query args and add new args', () => {
+			const url = route.addQueryArgs( { foo: 'bar' }, 'https://wordpress.com?search=test' );
+			expect( url ).to.eql( 'https://wordpress.com/?search=test&foo=bar' );
+		} );
+
+		it( 'should add an empty string for a query arg with an empty string', () => {
+			const url = route.addQueryArgs( { foo: 'bar', baz: '' }, 'https://wordpress.com?search=test' );
+			expect( url ).to.eql( 'https://wordpress.com/?search=test&foo=bar&baz=' );
+		} );
+
+		it( 'should not include a query arg with a null value', () => {
+			const url = route.addQueryArgs( { foo: 'bar', baz: null }, 'https://wordpress.com?search=test' );
+			expect( url ).to.eql( 'https://wordpress.com/?search=test&foo=bar' );
+		} );
+
+		it( 'should not include a query arg with an undefined value', () => {
+			const url = route.addQueryArgs( { foo: 'bar', baz: undefined }, 'https://wordpress.com?search=test' );
+			expect( url ).to.eql( 'https://wordpress.com/?search=test&foo=bar' );
+		} );
+	} );
+
 	describe( 'getSiteFragment', function() {
 		describe( 'for the root path', function() {
 			it( 'should return false', function() {

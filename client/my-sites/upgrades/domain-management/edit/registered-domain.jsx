@@ -97,7 +97,7 @@ const RegisteredDomain = React.createClass( {
 		return <DomainWarnings
 			domain={ this.props.domain }
 			selectedSite={ this.props.selectedSite }
-			ruleWhiteList={ [ 'expiredDomains', 'expiringDomains', 'newDomainsWithPrimary', 'newDomains' ] }/>;
+			ruleWhiteList={ [ 'expiredDomains', 'expiringDomains', 'newDomainsWithPrimary', 'newDomains', 'pendingGappsTosAcceptanceDomains' ] }/>;
 	},
 
 	getVerticalNav() {
@@ -117,7 +117,7 @@ const RegisteredDomain = React.createClass( {
 
 	emailNavItem() {
 		const path = paths.domainManagementEmail(
-			this.props.selectedSite.domain,
+			this.props.selectedSite.slug,
 			this.props.domain.name
 		);
 
@@ -130,7 +130,7 @@ const RegisteredDomain = React.createClass( {
 
 	nameServersNavItem() {
 		const path = paths.domainManagementNameServers(
-			this.props.selectedSite.domain,
+			this.props.selectedSite.slug,
 			this.props.domain.name
 		);
 
@@ -143,7 +143,7 @@ const RegisteredDomain = React.createClass( {
 
 	contactsPrivacyNavItem() {
 		const path = paths.domainManagementContactsPrivacy(
-			this.props.selectedSite.domain,
+			this.props.selectedSite.slug,
 			this.props.domain.name
 		);
 
@@ -156,7 +156,7 @@ const RegisteredDomain = React.createClass( {
 
 	transferNavItem() {
 		const path = paths.domainManagementTransfer(
-			this.props.selectedSite.domain,
+			this.props.selectedSite.slug,
 			this.props.domain.name
 		);
 

@@ -7,6 +7,7 @@ import React from 'react';
  * Internal dependencies
  */
 import Card from 'components/card';
+import CompactCard from 'components/card/compact';
 import Button from 'components/button';
 import formBase from './form-base';
 import RelatedContentPreview from 'my-sites/site-settings/related-content-preview';
@@ -25,10 +26,13 @@ import FormLabel from 'components/forms/form-label';
 import FormRadio from 'components/forms/form-radio';
 import FormCheckbox from 'components/forms/form-checkbox';
 import FormSettingExplanation from 'components/forms/form-setting-explanation';
-import TimezoneDropdown from 'components/timezone-dropdown';
+import Timezone from 'components/timezone';
+import JetpackSyncPanel from './jetpack-sync-panel';
+import UpgradeNudge from 'my-sites/upgrade-nudge';
+import { isBusiness } from 'lib/products-values';
+import { FEATURE_NO_BRANDING } from 'lib/plans/constants';
 
-module.exports = React.createClass( {
-
+const FormGeneral = React.createClass( {
 	displayName: 'SiteSettingsFormGeneral',
 
 	mixins: [ dirtyLinkedState, protectForm.mixin, formBase ],
@@ -61,7 +65,7 @@ module.exports = React.createClass( {
 			}
 
 			// handling `gmt_offset` and `timezone_string` values
-			let gmt_offset = site.settings.gmt_offset;
+			const gmt_offset = site.settings.gmt_offset;
 
 			if (
 				! settings.timezone_string &&
@@ -104,7 +108,7 @@ module.exports = React.createClass( {
 	},
 
 	onTimezoneSelect( timezone ) {
-		this.setState( { timezone_string: timezone.value } );
+		this.setState( { timezone_string: timezone } );
 	},
 
 	onRecordEvent( eventAction ) {
@@ -148,8 +152,8 @@ module.exports = React.createClass( {
 	},
 
 	blogAddress() {
-		var site = this.props.site,
-			customAddress = '',
+		const { site } = this.props;
+		let customAddress = '',
 			addressDescription = '';
 
 		if ( site.jetpack ) {
@@ -166,21 +170,32 @@ module.exports = React.createClass( {
 			addressDescription =
 				<FormSettingExplanation>
 					{
-						this.translate( 'Buy a {{domainSearchLink}}custom domain{{/domainSearchLink}}, {{mapDomainLink}}map{{/mapDomainLink}} a domain you already own, or {{redirectLink}}redirect{{/redirectLink}} this site.', {
-							components: {
-								domainSearchLink: <a href={ '/domains/add/' + site.slug } onClick={ this.trackUpgradeClick } />,
-								mapDomainLink: <a href={ '/domains/add/mapping/' + site.slug } onClick={ this.trackUpgradeClick } />,
-								redirectLink: <a href={ '/domains/add/site-redirect/' + site.slug } onClick={ this.trackUpgradeClick } />
+						this.translate(
+							'Buy a {{domainSearchLink}}custom domain{{/domainSearchLink}}, ' +
+							'{{mapDomainLink}}map{{/mapDomainLink}} a domain you already own, ' +
+							'or {{redirectLink}}redirect{{/redirectLink}} this site.',
+							{
+								components: {
+									domainSearchLink: (
+										<a href={ '/domains/add/' + site.slug } onClick={ this.trackUpgradeClick } />
+									),
+									mapDomainLink: (
+										<a href={ '/domains/add/mapping/' + site.slug } onClick={ this.trackUpgradeClick } />
+									),
+									redirectLink: (
+										<a href={ '/domains/add/site-redirect/' + site.slug } onClick={ this.trackUpgradeClick } />
+									)
+								}
 							}
-						} )
+						)
 					}
 				</FormSettingExplanation>;
 		}
 
 		return (
-			<FormFieldset className="has-divider">
+			<FormFieldset className="site-settings__has-divider">
 				<FormLabel htmlFor="blogaddress">{ this.translate( 'Site Address' ) }</FormLabel>
-				<div className="blogaddress-settings">
+				<div className="site-settings__blogaddress-settings">
 					<FormInput
 						name="blogaddress"
 						type="text"
@@ -223,7 +238,7 @@ module.exports = React.createClass( {
 	},
 
 	visibilityOptions() {
-		var site = this.props.site;
+		const { site } = this.props;
 
 		return (
 			<FormFieldset>
@@ -235,20 +250,23 @@ module.exports = React.createClass( {
 						onChange={ this.handleRadio }
 						disabled={ this.state.fetchingSettings }
 						onClick={ this.onRecordEvent( 'Clicked Site Visibility Radio Button' ) } />
-					<span>{ this.translate( 'Allow search engines to index this site' ) }</span>
+					<span>{ this.translate( 'Public' ) }</span>
+					<FormSettingExplanation isIndented>
+						{ this.translate( 'Your site is visible to everyone, and it may be indexed by search engines.' ) }
+					</FormSettingExplanation>
 				</FormLabel>
 
 				<FormLabel>
 					<FormRadio
-						name="blog_public"
+						name="blog_public"Ï
 						value="0"
 						checked={ 0 === parseInt( this.state.blog_public, 10 ) }
 						onChange={ this.handleRadio }
 						disabled={ this.state.fetchingSettings }
 						onClick={ this.onRecordEvent( 'Clicked Site Visibility Radio Button' ) } />
-					<span>{ this.translate( 'Discourage search engines from indexing this site' ) }</span>
-					<FormSettingExplanation className="inside-list is-indented">
-						{ this.translate( 'Note: This option does not block access to your site — it is up to search engines to honor your request.' ) }
+					<span>{ this.translate( 'Hidden' ) }</span>
+					<FormSettingExplanation isIndented>
+						{ this.translate( 'Your site is visible to everyone, but we ask search engines to not index your site.' ) }
 					</FormSettingExplanation>
 				</FormLabel>
 
@@ -257,11 +275,14 @@ module.exports = React.createClass( {
 						<FormRadio
 							name="blog_public"
 							value="-1"
-							checked={ - 1 === parseInt( this.state.blog_public, 10 ) }
+							checked={ -1 === parseInt( this.state.blog_public, 10 ) }
 							onChange={ this.handleRadio }
 							disabled={ this.state.fetchingSettings }
 							onClick={ this.onRecordEvent( 'Clicked Site Visibility Radio Button' ) } />
-						<span>{ this.translate( 'I would like my site to be private, visible only to users I choose' ) }</span>
+						<span>{ this.translate( 'Private' ) }</span>
+						<FormSettingExplanation isIndented>
+							{ this.translate( 'Your site is only visible to you and users you approve.' ) }
+						</FormSettingExplanation>
 					</FormLabel>
 				}
 
@@ -282,7 +303,6 @@ module.exports = React.createClass( {
 							<FormRadio
 								name="jetpack_relatedposts_enabled"
 								value="0"
-								className="tog"
 								checked={ 0 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) }
 								onChange={ this.handleRadio }
 								onClick={ this.onRecordEvent( 'Clicked Related Posts Radio Button' ) } />
@@ -294,59 +314,88 @@ module.exports = React.createClass( {
 							<FormRadio
 								name="jetpack_relatedposts_enabled"
 								value="1"
-								className="tog"
 								checked={ 1 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) }
 								onChange={ this.handleRadio }
 								onClick={ this.onRecordEvent( 'Clicked Related Posts Radio Button' ) } />
 							<span>{ this.translate( 'Show related content after posts' ) }</span>
 						</FormLabel>
-						<ul id="settings-reading-relatedposts-customize" className={ 1 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) ? null : 'disabled-block' }>
+						<ul
+							id="settings-reading-relatedposts-customize"
+							className={ 1 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) ? null : 'disabled-block' }>
 							<li>
 								<FormLabel>
-									<FormCheckbox name="jetpack_relatedposts_show_headline" checkedLink={ this.linkState( 'jetpack_relatedposts_show_headline' ) }/>
-									<span>{ this.translate( 'Show a "Related" header to more clearly separate the related section from posts' ) }</span>
+									<FormCheckbox
+										name="jetpack_relatedposts_show_headline"
+										checkedLink={ this.linkState( 'jetpack_relatedposts_show_headline' ) }/>
+									<span>
+										{ this.translate(
+											'Show a "Related" header to more clearly separate the related section from posts'
+										) }
+									</span>
 								</FormLabel>
 							</li>
 							<li>
 								<FormLabel>
-									<FormCheckbox name="jetpack_relatedposts_show_thumbnails" checkedLink={ this.linkState( 'jetpack_relatedposts_show_thumbnails' ) }/>
+									<FormCheckbox
+										name="jetpack_relatedposts_show_thumbnails"
+										checkedLink={ this.linkState( 'jetpack_relatedposts_show_thumbnails' ) }/>
 									<span>{ this.translate( 'Use a large and visually striking layout' ) }</span>
 								</FormLabel>
 							</li>
 						</ul>
-						<RelatedContentPreview enabled={ 1 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) } showHeadline={ this.state.jetpack_relatedposts_show_headline } showThumbnails={ this.state.jetpack_relatedposts_show_thumbnails } />
+						<RelatedContentPreview
+							enabled={ 1 === parseInt( this.state.jetpack_relatedposts_enabled, 10 ) }
+							showHeadline={ this.state.jetpack_relatedposts_show_headline }
+							showThumbnails={ this.state.jetpack_relatedposts_show_thumbnails } />
 					</li>
 				</ul>
 			</FormFieldset>
 		);
 	},
 
-	syncNonPublicPostTypes() {
+	showPublicPostTypesCheckbox() {
 		if ( ! config.isEnabled( 'manage/option_sync_non_public_post_stati' ) ) {
+			return false;
+		}
+
+		const { site } = this.props;
+		if ( site.jetpack && site.versionCompare( '4.1.1', '>' ) ) {
+			return false;
+		}
+
+		return true;
+	},
+
+	syncNonPublicPostTypes() {
+		if ( ! this.showPublicPostTypesCheckbox() ) {
 			return null;
 		}
+
 		return (
-			<Card className="is-compact">
+			<CompactCard>
 				<form onChange={ this.markChanged }>
-					<ul id="settings-jetpack" className="settings-jetpack">
+					<ul id="settings-jetpack">
 						<li>
 							<FormLabel>
-								<FormCheckbox name="jetpack_sync_non_public_post_stati" checkedLink={ this.linkState( 'jetpack_sync_non_public_post_stati' ) }/>
+								<FormCheckbox
+									name="jetpack_sync_non_public_post_stati"
+									checkedLink={ this.linkState( 'jetpack_sync_non_public_post_stati' ) }
+								/>
 								<span>{ this.translate( 'Allow synchronization of Posts and Pages with non-public post statuses' ) }</span>
-								<FormSettingExplanation className="is-indented">
+								<FormSettingExplanation isIndented>
 									{ this.translate( '(e.g. drafts, scheduled, private, etc\u2026)' ) }
 								</FormSettingExplanation>
 							</FormLabel>
 						</li>
 					</ul>
 				</form>
-			</Card>
+			</CompactCard>
 		);
 	},
 
 	jetpackDisconnectOption() {
-		var site = this.props.site,
-			disconnectText;
+		const { site } = this.props;
+		let disconnectText;
 
 		if ( ! site.jetpack ) {
 			return null;
@@ -365,7 +414,7 @@ module.exports = React.createClass( {
 
 	holidaySnowOption() {
 		// Note that years and months below are zero indexed
-		let site = this.props.site,
+		const site = this.props.site,
 			today = this.moment(),
 			startDate = this.moment( { year: today.year(), month: 11, day: 1 } ),
 			endDate = this.moment( { year: today.year(), month: 0, day: 4 } );
@@ -393,7 +442,7 @@ module.exports = React.createClass( {
 		);
 	},
 
-	timezoneDropdown() {
+	Timezone() {
 		if ( this.props.site.jetpack ) {
 			return;
 		}
@@ -404,7 +453,7 @@ module.exports = React.createClass( {
 					{ this.translate( 'Site Timezone' ) }
 				</FormLabel>
 
-				<TimezoneDropdown
+				<Timezone
 					valueLink={ this.linkState( 'timezone_string' ) }
 					selectedZone={ this.linkState( 'timezone_string' ).value }
 					disabled={ this.state.fetchingSettings }
@@ -418,8 +467,23 @@ module.exports = React.createClass( {
 		);
 	},
 
+	renderJetpackSyncPanel() {
+		if ( ! config.isEnabled( 'jetpack/sync-panel' ) ) {
+			return null;
+		}
+
+		const { site } = this.props;
+		if ( ! site.jetpack || this.props.site.versionCompare( '4.2-alpha', '<' ) ) {
+			return null;
+		}
+
+		return (
+			<JetpackSyncPanel />
+		);
+	},
+
 	render() {
-		var site = this.props.site;
+		const { site } = this.props;
 		if ( site.jetpack && ! site.hasMinimumJetpackVersion ) {
 			return this.jetpackDisconnectOption();
 		}
@@ -445,12 +509,12 @@ module.exports = React.createClass( {
 						{ this.siteOptions() }
 						{ this.blogAddress() }
 						{ this.languageOptions() }
-						{ this.timezoneDropdown() }
+						{ this.Timezone() }
 						{ this.holidaySnowOption() }
 					</form>
 				</Card>
 
-				<SectionHeader label={ this.translate( 'Visibility' ) }>
+				<SectionHeader label={ this.translate( 'Privacy' ) }>
 					<Button
 						compact={ true }
 						onClick={ this.submitForm }
@@ -469,7 +533,28 @@ module.exports = React.createClass( {
 						{ this.visibilityOptions() }
 					</form>
 				</Card>
-
+				{
+					! this.props.site.jetpack && <div className="site-settings__footer-credit-container">
+						<SectionHeader label={ this.translate( 'Footer Credit' ) } />
+						<CompactCard className="site-settings__footer-credit-explanation">
+							<p>
+								{ this.translate( 'You can customize your website by changing the footer credit in customizer.' ) }
+							</p>
+							<div>
+								<Button className="site-settings__footer-credit-change" href={ '/customize/identity/' + site.slug }>
+									{ this.translate( 'Change footer credit' ) }
+								</Button>
+							</div>
+						</CompactCard>
+						{ ! isBusiness( site.plan ) && <UpgradeNudge
+							className="site-settings__footer-credit-nudge"
+							feature={ FEATURE_NO_BRANDING }
+							title={ this.translate( 'Remove the footer credit entirely with Business Plan' ) }
+							message={ this.translate( 'Upgrade to remove the footer credit, add Google Analytics and more' ) }
+							icon="customize"
+						/> }
+					</div>
+				}
 				<SectionHeader label={ this.translate( 'Related Posts' ) }>
 					<Button
 						compact={ true }
@@ -494,7 +579,7 @@ module.exports = React.createClass( {
 					? <div>
 						<SectionHeader label={ this.translate( 'Jetpack' ) }>
 							{ this.jetpackDisconnectOption() }
-							{ config.isEnabled( 'manage/option_sync_non_public_post_stati' )
+							{ this.showPublicPostTypesCheckbox()
 								? <Button
 									compact={ true }
 									onClick={ this.submitForm }
@@ -510,14 +595,15 @@ module.exports = React.createClass( {
 							}
 						</SectionHeader>
 
+						{ this.renderJetpackSyncPanel() }
 						{ this.syncNonPublicPostTypes() }
 
-						<Card href={ '../security/' + site.slug } className="is-compact">
+						<CompactCard href={ '../security/' + site.slug }>
 							{ this.translate( 'View Jetpack Monitor Settings' ) }
-						</Card>
-						<Card href={ 'https://wordpress.com/manage/' + site.ID } className="is-compact">
+						</CompactCard>
+						<CompactCard href={ 'https://wordpress.com/manage/' + site.ID }>
 							{ this.translate( 'Migrate followers from another WordPress.com blog' ) }
-						</Card>
+						</CompactCard>
 					</div>
 					: null }
 			</div>
@@ -541,3 +627,5 @@ module.exports = React.createClass( {
 		}
 	}
 } );
+
+export default FormGeneral;

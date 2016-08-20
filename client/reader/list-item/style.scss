@@ -3,7 +3,7 @@
 	margin-top: 0;
 	margin-bottom: 0;
 	margin-left: 54px;
-	margin-right: 80px;
+	margin-right: 100px;
 	overflow: hidden;
 	white-space: nowrap;
 	position: relative;
@@ -14,6 +14,7 @@
 }
 
 .reader-list-item__card.is-placeholder {
+
 	.reader-list-item__title,
 	.reader-list-item__description {
 		pointer-events: none;
@@ -54,8 +55,8 @@
 
 .reader-list-item__icon {
 	position: absolute;
-		top: 14px;
 		left: 16px;
+		top: 14px;
 	height: 48px;
 	width: 48px;
 	text-align: center;
@@ -66,61 +67,38 @@
 		position: relative;
 			top: 1px;
 	}
+
+	.site-icon {
+		border: 0;
+	}
 }
 
 .reader-list-item__actions {
 	position: absolute;
 		bottom: 0;
-		right: 0;
-		top: 16px;
+		right: 20px;
+		top: 18px;
 
-	.follow-button {
+	.follow-button__label {
 
-		.follow-button__label {
-			color: $gray;
-		}
-
-		.gridicon {
-			left: 18px;
-		}
-
-		&:hover {
-
-			.gridicon {
-				fill: $blue-medium;
-			}
-
-			.follow-button__label {
-				color: $blue-medium;
-			}
-		}
-	}
-
-	.follow-button.is-following {
-		.follow-button__label {
-			color: $alert-green;
-		}
-
-		&:hover {
-
-			.gridicon {
-				fill: lighten( $gray, 10% );
-			}
-
-			.follow-button__label {
-				color: lighten( $gray, 10% );
-			}
+		@include breakpoint( "<660px" ) {
+			display: none;
 		}
 	}
 }
 
 .foldable-card {
+
 	.reader-list-item__icon {
 		left: 42px;
 	}
 
 	.reader-list-item__title,
 	.reader-list-item__description {
-		margin-left: 90px;
+		margin: 0 100px 0 90px;
+
+		@include breakpoint( "<660px" ) {
+			margin: 0 30px 0 90px;
+		}
 	}
 }

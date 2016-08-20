@@ -42,9 +42,6 @@ export default React.createClass( {
 		if ( site.unreachable ) {
 			return true;
 		}
-		if ( site.hasMinimumJetpackVersion && site.update === 'error' ) {
-			return true;
-		}
 		return false;
 	},
 
@@ -283,7 +280,9 @@ export default React.createClass( {
 			<div className={ indicatorClass }>
 				{ ! this.state.expand &&
 					<button className="site-indicator__button" onClick={ this.toggleExpand }>
-						<Gridicon icon={ this.getIcon() } size={ 16 } nonStandardSize />
+						{ /* eslint-disable wpcalypso/jsx-gridicon-size */ }
+						<Gridicon icon={ this.getIcon() } size={ 16 } />
+						{ /* eslint-enable wpcalypso/jsx-gridicon-size */ }
 					</button>
 				}
 				{ this.state.expand

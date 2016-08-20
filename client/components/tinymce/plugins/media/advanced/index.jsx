@@ -5,14 +5,13 @@ import React from 'react';
 import ReactDom from 'react-dom';
 import ReactDomServer from 'react-dom/server';
 import { Provider as ReduxProvider } from 'react-redux';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
-import i18n from 'lib/mixins/i18n';
 import * as MediaSerialization from 'lib/media-serialization';
 import config from 'config';
-import { setEditorMediaEditItem } from 'state/ui/editor/media/actions';
 import Gridicon from 'components/gridicon';
 import EditorMediaAdvanced from 'post-editor/editor-media-advanced';
 
@@ -23,22 +22,45 @@ export default function( editor ) {
 	}
 
 	let container;
-	function render() {
-		container = editor.getContainer().appendChild( document.createElement( 'div' ) );
+	function render( visible = true, item ) {
+		if ( ! container ) {
+			container = editor.getContainer().appendChild(
+				document.createElement( 'div' )
+			);
+		}
+
+		if ( ! visible ) {
+			return unmount();
+		}
+
 		ReactDom.render(
 			<ReduxProvider store={ store }>
-				<EditorMediaAdvanced insertMedia={ insertMedia } />
+				<EditorMediaAdvanced
+					{ ...{ visible, item } }
+					onClose={ hideModal }
+					insertMedia={ insertMedia } />
 			</ReduxProvider>,
 			container
 		);
 	}
 
+	function showModal( item ) {
+		render( true, item );
+	}
+
+	function hideModal() {
+		render( false );
+	}
+
 	function unmount() {
-		ReactDom.unmountComponentAtNode( container );
+		if ( container ) {
+			ReactDom.unmountComponentAtNode( container );
+		}
 	}
 
 	function insertMedia( markup ) {
 		editor.execCommand( 'mceInsertContent', false, markup );
+		hideModal();
 	}
 
 	editor.addButton( 'wp_img_advanced', {
@@ -57,11 +79,9 @@ export default function( editor ) {
 		onClick() {
 			const node = editor.selection.getStart();
 			const item = MediaSerialization.deserialize( node );
-
-			store.dispatch( setEditorMediaEditItem( item ) );
+			showModal( item );
 		}
 	} );
 
-	editor.on( 'init', render );
 	editor.on( 'remove', unmount );
 }

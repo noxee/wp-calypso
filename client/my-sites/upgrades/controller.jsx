@@ -2,6 +2,7 @@
  * External Dependencies
  */
 var page = require( 'page' ),
+	i18n = require( 'i18n-calypso' ),
 	ReactDom = require( 'react-dom' ),
 	React = require( 'react' );
 
@@ -11,13 +12,12 @@ var page = require( 'page' ),
 var analytics = require( 'lib/analytics' ),
 	sites = require( 'lib/sites-list' )(),
 	route = require( 'lib/route' ),
-	i18n = require( 'lib/mixins/i18n' ),
 	Main = require( 'components/main' ),
 	upgradesActions = require( 'lib/upgrades/actions' ),
 	titleActions = require( 'lib/screen-title/actions' ),
 	setSection = require( 'state/ui/actions' ).setSection,
-	plansList = require( 'lib/plans-list' )(),
 	productsList = require( 'lib/products-list' )(),
+	abtest = require( 'lib/abtest' ).abtest,
 	renderWithReduxStore = require( 'lib/react-helpers' ).renderWithReduxStore;
 
 module.exports = {
@@ -49,6 +49,11 @@ module.exports = {
 
 		analytics.pageView.record( basePath, 'Domain Search > Domain Registration' );
 
+		// Scroll to the top
+		if ( typeof window !== 'undefined' ) {
+			window.scrollTo( 0, 0 );
+		}
+
 		renderWithReduxStore(
 			(
 				<CartData>
@@ -75,7 +80,7 @@ module.exports = {
 
 		analytics.pageView.record( basePath, 'Domain Search > Site Redirect' );
 
-		ReactDom.render(
+		renderWithReduxStore(
 			(
 				<CartData>
 					<SiteRedirect
@@ -83,13 +88,14 @@ module.exports = {
 						sites={ sites } />
 				</CartData>
 			),
-			document.getElementById( 'primary' )
+			document.getElementById( 'primary' ),
+			context.store
 		);
 	},
 
 	mapDomain: function( context ) {
 		var CartData = require( 'components/data/cart' ),
-			MapDomain = require( 'components/domains/map-domain' ),
+			MapDomain = require( 'my-sites/upgrades/map-domain' ),
 			basePath = route.sectionify( context.path );
 
 		titleActions.setTitle( i18n.translate( 'Map a Domain' ), {
@@ -97,19 +103,20 @@ module.exports = {
 		} );
 
 		analytics.pageView.record( basePath, 'Domain Search > Domain Mapping' );
-
-		ReactDom.render(
+		renderWithReduxStore(
 			(
 				<Main>
 					<CartData>
 						<MapDomain
+							store={ context.store }
 							productsList={ productsList }
 							initialQuery={ context.query.initialQuery }
 							sites={ sites } />
 					</CartData>
 				</Main>
 			),
-			document.getElementById( 'primary' )
+			document.getElementById( 'primary' ),
+			context.store
 		);
 	},
 
@@ -163,12 +170,11 @@ module.exports = {
 			CheckoutData = require( 'components/data/checkout' ),
 			CartData = require( 'components/data/cart' ),
 			SecondaryCart = require( './cart/secondary-cart' ),
-			storedCards = require( 'lib/stored-cards' )(),
 			basePath = route.sectionify( context.path ),
-			planName = context.params.plan_name,
+			product = context.params.product,
 			selectedFeature = context.params.feature;
 
-		if ( 'thank-you' === planName ) {
+		if ( 'thank-you' === product ) {
 			return;
 		}
 
@@ -182,9 +188,7 @@ module.exports = {
 			(
 				<CheckoutData>
 					<Checkout
-						cards={ storedCards }
-						planName={ planName }
-						plans={ plansList }
+						product={ product }
 						productsList={ productsList }
 						selectedFeature={ selectedFeature }
 						sites={ sites } />

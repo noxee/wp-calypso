@@ -11,23 +11,27 @@ import cloneDeep from 'lodash/cloneDeep';
 import cloneDeepWith from 'lodash/cloneDeepWith';
 import findIndex from 'lodash/findIndex';
 import iteratee from 'lodash/iteratee';
+import isArray from 'lodash/isArray';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
 import wpcom from 'lib/wp';
 import Emitter from 'lib/mixins/emitter';
-import i18n from 'lib/mixins/i18n';
 import sitesFactory from 'lib/sites-list';
 import untrailingslashit from 'lib/route/untrailingslashit';
 import trailingslashit from 'lib/route/trailingslashit';
 import { isFrontPage } from 'my-sites/pages/helpers';
 import Traverser from 'lib/tree-convert/tree-traverser';
+import TreeConvert from 'lib/tree-convert';
+import { makePromiseSequence } from 'lib/promises';
 import { decodeEntities } from 'lib/formatting';
 import postEditStore from 'lib/posts/actions';
 
 const debug = debugFactory( 'calypso:menu-data' );
 const sites = sitesFactory();
+const treeConvert = new TreeConvert();
 
 /**
  * Constants
@@ -388,23 +392,23 @@ MenuData.prototype.interceptLoadForHomepageLink = function( menu ) {
 
 MenuData.prototype.createNewPagePromise = ( menuItem, siteID ) => new Promise(
 	( resolve, reject ) => {
-		postEditStore.startEditingNew( { ID: siteID } );
+		postEditStore.startEditingNew( siteID );
 		postEditStore.saveEdited(
 			{
 				title: menuItem.name,
 				ID: 'new',
 				type: 'page',
-				status: 'publish'
+				status: 'publish',
 			},
-			function( error, data ) {
+			( error, data ) => {
 				postEditStore.stopEditing();
-				if ( !error && data ) {
-					menuItem.url = data.URL
-					menuItem.content_id = data.ID
+				if ( ! error && data ) {
+					menuItem.url = data.URL;
+					menuItem.content_id = data.ID;
 					resolve();
-				} else {
-					reject( error );
+					return;
 				}
+				reject( error );
 			}
 		);
 	}
@@ -436,7 +440,7 @@ MenuData.prototype.sendMenuToApi = function( menu, callback ) {
 			callback && callback( null, parsedMenu );
 		}
 	);
-}
+};
 
 MenuData.prototype.saveMenu = function( menu, callback ) {
 	if ( ! menu ) {
@@ -459,22 +463,25 @@ MenuData.prototype.saveMenu = function( menu, callback ) {
 
 	debug( 'saveMenu', menu );
 
-	const self = this;
-
-	/*
-	Because of how postEditStore works, we need to fire promises one after another.
+	/**
+	 * Below, we check for any new pages that need to be created. The post edit
+	 * store requires this process to be sequential, so we build a chain of
+	 * promises, each of them responsible for the creation of a page.
 	 */
-	menu.items.filter(
-		isInjectedNewPageItem
-	).reduce(
-		( previousNewPagePromise, menuItem ) => previousNewPagePromise.then( () => self.createNewPagePromise( menuItem, self.siteID ) ),
-		Promise.resolve()
-	)
-	.catch( error => {
-		self.emit( 'error', i18n.translate( 'There was a problem saving your menu.' ) );
+
+	const pendingPageItems = treeConvert
+		.untreeify( menu.items )
+		.filter( isInjectedNewPageItem );
+
+	const createdPages = makePromiseSequence(
+			pendingPageItems,
+			item => this.createNewPagePromise( item, this.siteID )
+	);
+
+	createdPages.catch( error => {
+		this.emit( 'error', i18n.translate( 'There was a problem saving your menu.' ) );
 		debug( 'Error', error );
-	} )
-	.then( this.sendMenuToApi.bind( this, menu, callback ) );
+	} ).then( this.sendMenuToApi.bind( this, menu, callback ) );
 };
 
 MenuData.prototype.deleteMenu = function( menu, callback ) {

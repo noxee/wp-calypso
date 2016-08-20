@@ -2,7 +2,7 @@
  * External dependencies
  */
 import React from 'react';
-import noop from 'lodash/noop';
+import { defer, noop } from 'lodash';
 
 /**
  * Internal dependencies
@@ -34,7 +34,13 @@ export default React.createClass( {
 	},
 
 	render: function() {
-		const { isVisible, baseClassName, transitionLeave, enterTimeout, leaveTimeout } = this.props;
+		const {
+			isVisible,
+			baseClassName,
+			transitionLeave,
+			enterTimeout,
+			leaveTimeout
+		} = this.props;
 
 		return (
 			<RootChild>
@@ -55,7 +61,7 @@ export default React.createClass( {
 
 	onDialogDidLeave: function() {
 		if ( this.props.onClosed ) {
-			process.nextTick( this.props.onClosed );
+			defer( this.props.onClosed );
 		}
 	},
 

@@ -16,7 +16,8 @@ import PlanActions from 'components/plans/plan-actions';
 import PlanDiscountMessage from 'components/plans/plan-discount-message';
 import PlanHeader from 'components/plans/plan-header';
 import PlanPrice from 'components/plans/plan-price';
-import WpcomPlanDetails from 'my-sites/plans/wpcom-plan-details' ;
+import WpcomPlanDetails from 'my-sites/plans/wpcom-plan-details';
+import { isDesktop } from 'lib/viewport';
 
 const Plan = React.createClass( {
 	handleLearnMoreClick() {
@@ -40,6 +41,12 @@ const Plan = React.createClass( {
 			siteSuffix = site ? site.slug : '';
 
 		return this.props.comparePlansUrl ? this.props.comparePlansUrl : '/plans/compare/' + siteSuffix;
+	},
+
+	isUSorCanadaCurrency() {
+		const { plan } = this.props;
+		const planCurrency = plan.currency_code || 'USD';
+		return [ 'USD', 'CAD' ].indexOf( planCurrency ) > -1;
 	},
 
 	getDescription() {
@@ -181,13 +188,19 @@ const Plan = React.createClass( {
 				site={ this.props.site }
 				cart={ this.props.cart }
 				isPlaceholder={ this.isPlaceholder() }
-				isSubmitting={ this.props.isSubmitting } />
+				isSubmitting={ this.props.isSubmitting }
+				onSelectFreeJetpackPlan={ this.props.onSelectFreeJetpackPlan } />
 		);
+	},
+
+	setImagePlanActionRef( imagePlanActionRef ) {
+		this.imagePlanActionRef = imagePlanActionRef;
 	},
 
 	getImagePlanAction() {
 		return (
 			<PlanActions
+				ref={ this.setImagePlanActionRef }
 				plan={ this.props.plan }
 				isInSignup={ this.props.isInSignup }
 				onSelectPlan={ this.props.onSelectPlan }
@@ -200,11 +213,26 @@ const Plan = React.createClass( {
 		);
 	},
 
+	clickPlanHeader( event ) {
+		// clicking a card should select a plan, see issue 4486
+		if ( isDesktop() && this.imagePlanActionRef && this.imagePlanActionRef.canSelectPlan() ) {
+			this.imagePlanActionRef.handleSelectPlan( event );
+		}
+	},
+
 	render() {
 		return (
-			<Card className={ this.getClassNames() } key={ this.getProductSlug() } onClick={ this.showDetails }>
+			<Card
+				className={ this.getClassNames() }
+				key={ this.getProductSlug() }
+				onClick={ this.showDetails }
+			>
 				{ this.getPlanDiscountMessage() }
-				<PlanHeader onClick={ this.showDetails } text={ this.getProductName() } isPlaceholder={ this.isPlaceholder() }>
+				<PlanHeader
+					onClick={ this.clickPlanHeader }
+					text={ this.getProductName() }
+					isPlaceholder={ this.isPlaceholder() }
+				>
 					{ this.getBadge() }
 
 					<p className="plan__plan-tagline">{ this.getPlanTagline() }</p>
@@ -212,6 +240,7 @@ const Plan = React.createClass( {
 					{ this.getImagePlanAction() }
 					{ this.getPlanPrice() }
 				</PlanHeader>
+
 				<div className="plan__plan-expand">
 					<div className="plan__plan-details">
 						{ this.getDescription() }

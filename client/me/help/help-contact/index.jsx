@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import page from 'page';
+import { connect } from 'react-redux';
 
 /**
  * Internal dependencies
@@ -22,6 +23,10 @@ import notices from 'notices';
 import siteList from 'lib/sites-list';
 import analytics from 'lib/analytics';
 import i18n from 'lib/i18n-utils';
+import { isOlarkTimedOut } from 'state/ui/olark/selectors';
+import { isCurrentUserEmailVerified } from 'state/current-user/selectors';
+import QueryOlark from 'components/data/query-olark';
+import HelpUnverifiedWarning from '../help-unverified-warning';
 
 /**
  * Module variables
@@ -30,8 +35,13 @@ const wpcom = wpcomLib.undocumented();
 const sites = siteList();
 let savedContactForm = null;
 
-module.exports = React.createClass( {
-	displayName: 'HelpContact',
+const HelpContact = React.createClass( {
+
+	componentWillReceiveProps( nextProps ) {
+		if ( nextProps.olarkTimedOut && this.olarkTimedOut !== nextProps.olarkTimedOut ) {
+			this.onOlarkUnavailable();
+		}
+	},
 
 	componentDidMount: function() {
 		olarkStore.on( 'change', this.updateOlarkState );
@@ -273,19 +283,24 @@ module.exports = React.createClass( {
 		} );
 	},
 
-	onOperatorsAway: function() {
-		const IS_UNAVAILABLE = false;
+	trackContactFormAndFillSubject() {
 		const { details } = this.state.olark;
-
 		if ( ! details.isConversing ) {
 			analytics.tracks.recordEvent( 'calypso_help_offline_form_display', {
 				form_type: 'kayako'
 			} );
 		}
-
-		//Autofill the subject field since we will be showing it now that operators have went away.
 		this.autofillSubject();
+	},
 
+	onOlarkUnavailable() {
+		this.trackContactFormAndFillSubject();
+		this.showTimeoutNotice();
+	},
+
+	onOperatorsAway: function() {
+		const IS_UNAVAILABLE = false;
+		this.trackContactFormAndFillSubject();
 		this.showAvailabilityNotice( IS_UNAVAILABLE );
 	},
 
@@ -307,6 +322,15 @@ module.exports = React.createClass( {
 		} else {
 			notices.warning( this.translate( 'Sorry! We just missed you as our Happiness Engineers stepped away.' ) );
 		}
+	},
+
+	showTimeoutNotice() {
+		const { isUserEligible, isOlarkReady } = this.state.olark;
+
+		if ( ! isUserEligible || isOlarkReady ) {
+			return;
+		}
+		notices.warning( this.translate( 'Our chat tools did not load. If you have an adblocker please disable it and refresh this page.' ) );
 	},
 
 	/**
@@ -351,7 +375,7 @@ module.exports = React.createClass( {
 			return <HelpContactConfirmation { ...confirmation } />;
 		}
 
-		if ( ! ( olark.isOlarkReady && sitesInitialized ) ) {
+		if ( ! ( olark.isOlarkReady && sitesInitialized ) && ! this.props.olarkTimedOut ) {
 			return (
 				<div className="help-contact__placeholder">
 					<h4 className="help-contact__header">Loading contact form</h4>
@@ -415,10 +439,21 @@ module.exports = React.createClass( {
 		return (
 			<Main className="help-contact">
 				<HeaderCake onClick={ this.backToHelp } isCompact={ true }>{ this.translate( 'Contact Us' ) }</HeaderCake>
+				{ ! this.props.isEmailVerified && <HelpUnverifiedWarning /> }
 				<Card className={ this.canShowChatbox() ? 'help-contact__chat-form' : 'help-contact__form' }>
 					{ this.getView() }
 				</Card>
+				<QueryOlark />
 			</Main>
 		);
 	}
 } );
+
+export default connect(
+	( state ) => {
+		return {
+			olarkTimedOut: isOlarkTimedOut( state ),
+			isEmailVerified: isCurrentUserEmailVerified( state ),
+		};
+	}
+)( HelpContact );

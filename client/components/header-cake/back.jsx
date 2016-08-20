@@ -5,13 +5,14 @@
  */
 import React, { PropTypes } from 'react';
 import classNames from 'classnames';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
 import ObserveWindowSizeMixin from 'lib/mixins/observe-window-resize';
 import Gridicon from 'components/gridicon';
-import i18n from 'lib/mixins/i18n';
+import Button from 'components/button';
 import viewport from 'lib/viewport';
 
 /**
@@ -37,24 +38,37 @@ export default React.createClass( {
 
 	getDefaultProps() {
 		return {
-			spacer: false
+			spacer: false,
+			disabled: false
 		};
+	},
+
+	hideText( text ) {
+		const windowWidth = viewport.getWindowInnerWidth();
+
+		if (
+			windowWidth <= HIDE_BACK_CRITERIA.windowWidth &&
+			text.length >= HIDE_BACK_CRITERIA.characterLength ||
+			windowWidth <= 300
+		) {
+			return true;
+		}
+
+		return false;
 	},
 
 	render() {
 		const { text = i18n.translate( 'Back' ), href, onClick, spacer } = this.props;
-		const windowWidth = viewport.getWindowInnerWidth();
-		const hideText = windowWidth <= HIDE_BACK_CRITERIA.windowWidth && text.length >= HIDE_BACK_CRITERIA.characterLength || windowWidth <= 300;
 		const linkClasses = classNames( {
 			'header-cake__back': true,
 			'is-spacer': spacer
 		} );
 
 		return (
-			<a className={ linkClasses } href={ href } onClick={ onClick }>
-				<Gridicon icon="chevron-left" size={ 18 } />
-				{ ! hideText && <span className="header-cake__back-text">{ text }</span> }
-			</a>
+			<Button compact borderless className={ linkClasses } href={ href } onClick={ onClick } disabled={ spacer }>
+				<Gridicon icon="arrow-left" size={ 18 } />
+				{ ! this.hideText( text ) && text }
+			</Button>
 		);
 	},
 

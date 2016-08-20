@@ -57,7 +57,7 @@ function buildQuerystringForPost( post ) {
 	const args = {};
 
 	if ( post.content_embeds && post.content_embeds.length ) {
-		args.embed = post.content_embeds[0].embedUrl || post.content_embeds[0].src;
+		args.embed = post.content_embeds[ 0 ].embedUrl || post.content_embeds[ 0 ].src;
 	}
 	if ( post.canonical_image && post.canonical_image.uri ) {
 		args.image = post.canonical_image.uri;
@@ -191,9 +191,9 @@ const ReaderShare = React.createClass( {
 								position={ this.props.position }
 								className="popover reader-share__popover">
 								<PopoverMenuItem action="twitter" className="reader-share__popover-item">
-									<SocialLogo icon="twitter" /> Twitter</PopoverMenuItem>
+									<SocialLogo icon="twitter" /><span>Twitter</span></PopoverMenuItem>
 								<PopoverMenuItem action="facebook" className="reader-share__popover-item">
-									<SocialLogo icon="facebook" /> Facebook</PopoverMenuItem>
+									<SocialLogo icon="facebook" /><span>Facebook</span></PopoverMenuItem>
 							</PopoverMenu>
 						)
 					)

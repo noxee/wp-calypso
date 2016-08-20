@@ -1,52 +1,45 @@
-#translator-launcher {
+.community-translator {
 	position: fixed;
-		bottom: 45px;
-		right: 20px;
-
+		bottom: 50px;
+		right: 16px;
 	border-radius: 27px;
 	background: $blue-wordpress;
+	cursor: pointer;
 	padding: 4px;
-	font-size: 16px;
-	z-index: z-index( 'root', '#translator-launcher' );
+	font-size: 13px;
+	z-index: z-index( 'root', '.community-translator' );
 
-	a {
-		color: $white;
-		text-decoration: none;
-		outline: 0;
-
-		.noticon {
-			font-size: 32px;
-			width: 32px;
-		}
-
-		.text {
-			float: right;
-			width: 0;
-			overflow: hidden;
-			height: 32px;
-			line-height: 32px;
-			white-space: nowrap;
-		}
-
-		&:hover {
-			.text {
-				transition: all 0.25s ease-in-out;
-				width: auto;
-				margin-right: 6px;
-				padding: 0 2px;
-			}
-		}
+	&.is-active {
+		background: $orange-jazzy;
 	}
+}
 
-	&.active {
-		background: $white;
-		a {
-			color: $blue-wordpress;
+.community-translator__button {
+	align-items: center;
+	color: $white;
+	text-decoration: none;
+	outline: 0;
+	display: flex;
+
+	&:hover {
+		color: $white;
+
+		.community-translator__text {
+			transition: all 0.15s ease-in-out;
+			width: auto;
+			margin-right: 6px;
+			padding: 0 2px;
 		}
 	}
 }
 
-//Overwriting the popup defaults
+.community-translator__text {
+	width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+// Overwriting the popup defaults
 body {
 	.webui-popover {
 		border-radius: 2px;
@@ -98,11 +91,11 @@ body {
 	}
 }
 
-.translator-modal {
+.community-translator__modal {
 	max-width: 400px;
 }
 
-.translator-invitation {
+.community-translator__translator-invitation {
 	background: none;
 	position: relative;
 	padding: 24px 18px 0;
@@ -120,13 +113,13 @@ body {
 			right: 0;
 		height: 1px;
 		margin-top: 35px;
-		z-index: z-index( 'root', '.translator-invitation:before' );
+		z-index: z-index( 'root', '.community-translator__translator-invitation:before' );
 		background: linear-gradient( to right, fade-out( lighten( $gray, 20% ), 1 ) 0%, lighten( $gray, 20% ) 20%, lighten( $gray, 20% ) 80%, fade-out( lighten( $gray, 20% ), 1 ) 100% );
 	}
 	.close-button {
 		padding: 6px;
 	}
-	.translator-invitation__decoration {
+	.community-translator__translator-invitation__decoration {
 		// copied from noticons styling
 		background-color: $gray-light;
 		color: $gray;
@@ -142,7 +135,7 @@ body {
 	}
 }
 
-.translator-invitation__title {
+.community-translator__translator-invitation__title {
 	@extend %heading;
 	color: $gray-dark;
 	font-family: $serif;
@@ -152,7 +145,7 @@ body {
 	margin: 0 0 12px;
 }
 
-.translator-invitation__primary-content {
+.community-translator__translator-invitation__primary-content {
 	font-size: 16px;
 	line-height: 24px;
 	.button {
@@ -164,16 +157,16 @@ body {
 	}
 }
 
-.translator-invitation__secondary-content {
+.community-translator__translator-invitation__secondary-content {
 	flex-direction: column;
 }
 
-.translator-invitation__intro {
+.community-translator__translator-invitation__intro {
 	flex-grow: 100%;
 	margin-bottom: 20px;
 }
 
-.translator-invitation__link {
+.community-translator__translator-invitation__link {
 	color: $blue-medium;
 	text-shadow: 1px 0 lighten( $gray, 30% ), 2px 0 lighten( $gray, 30% ), -1px 0 lighten( $gray, 30% ), -2px 0 lighten( $gray, 30% );
 	background-image: linear-gradient( to bottom, transparent 50%, $blue-medium 50% );
@@ -182,7 +175,7 @@ body {
 	background-position: 0 85%;
 }
 
-.translator-invitation__actions {
+.community-translator__translator-invitation__actions {
 	flex-grow: 100%;
 	> :last-child {
 		margin-right: 0;
@@ -190,15 +183,15 @@ body {
 }
 
 @include breakpoint( ">660px" ) {
-	.translator-invitation {
+	.community-translator__translator-invitation {
 		padding: 12px 0 0;
 	}
 
-	.translator-invitation__title {
+	.community-translator__translator-invitation__title {
 		clear: none;
 	}
 
-	.translator-invitation__primary-content {
+	.community-translator__translator-invitation__primary-content {
 		margin-bottom: 0;
 		.button {
 			display: inline-block;
@@ -209,17 +202,17 @@ body {
 		}
 	}
 
-	.translator-invitation__intro {
+	.community-translator__translator-invitation__intro {
 		flex: 0 1 auto;
 		margin-bottom: 0px;
 	}
 
-	.translator-invitation__actions {
+	.community-translator__translator-invitation__actions {
 		flex: 0 0 auto;
 		margin-left: 2%;
 	}
 
-	.translator-invitation__secondary-content {
+	.community-translator__translator-invitation__secondary-content {
 		align-items: center;
 		display: flex;
 		flex-direction: row;

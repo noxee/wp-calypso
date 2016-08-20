@@ -7,7 +7,7 @@ const PRETTY_FEED_URLS = {
 
 const PRETTY_SITE_URLS = {
 	53424024: '/discover'
-}
+};
 
 export function getPrettySiteUrl( siteID ) {
 	return PRETTY_SITE_URLS[ siteID ];
@@ -23,6 +23,14 @@ export function getSiteUrl( siteID ) {
 
 export function getFeedUrl( feedID ) {
 	return getPrettyFeedUrl( feedID ) || FEED_URL_BASE + feedID;
+}
+
+export function getStreamUrl( feedID, siteID ) {
+	if ( feedID ) {
+		return getFeedUrl( feedID );
+	}
+
+	return getSiteUrl( siteID );
 }
 
 export function getStreamUrlFromPost( post ) {

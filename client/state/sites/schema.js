@@ -13,7 +13,6 @@ export const sitesSchema = {
 				jetpack: { type: 'boolean' },
 				post_count: { type: 'number' },
 				subscribers_count: { type: 'number' },
-				slug: { type: 'string' },
 				lang: { type: 'string' },
 				icon: {
 					type: 'object',
@@ -26,7 +25,7 @@ export const sitesSchema = {
 					type: 'object',
 					properties: {
 						id: { type: 'number' },
-						sizes: { type: [ 'array', 'object'] },
+						sizes: { type: [ 'array', 'object' ] },
 						url: { type: 'string' }
 					}
 				},
@@ -35,7 +34,7 @@ export const sitesSchema = {
 				is_following: { type: 'boolean' },
 				options: { type: 'object' },
 				meta: { type: 'object' },
-				user_can_manager: { type: 'boolean' },
+				user_can_manage: { type: 'boolean' },
 				is_vip: { type: 'boolean' },
 				is_multisite: { type: 'boolean' },
 				capabilities: {
@@ -46,11 +45,13 @@ export const sitesSchema = {
 				},
 				plan: {
 					type: 'object',
+					required: [ 'product_id', 'product_slug', 'expired' ],
 					properties: {
 						product_id: { type: 'number' },
 						product_slug: { type: 'string' },
 						product_name_short: { type: 'string' },
-						free_trial: { type: 'boolean' }
+						free_trial: { type: 'boolean' },
+						expired: { type: 'boolean' }
 					}
 				},
 				single_user_site: { type: 'boolean' }

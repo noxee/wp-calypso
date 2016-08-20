@@ -13,7 +13,7 @@ import React from 'react';
  */
 import { activated } from 'state/themes/actions';
 import analytics from 'lib/analytics';
-import BusinessPlanDetails from './business-plan-details';
+import { abtest } from 'lib/abtest';
 import Card from 'components/card';
 import ChargebackDetails from './chargeback-details';
 import CheckoutThankYouFeaturesHeader from './features-header';
@@ -27,31 +27,34 @@ import FreeTrialNudge from './free-trial-nudge';
 import { getPlansBySite } from 'state/sites/plans/selectors';
 import { getReceiptById } from 'state/receipts/selectors';
 import GoogleAppsDetails from './google-apps-details';
+import GuidedTransferDetails from './guided-transfer-details';
 import HappinessSupport from 'components/happiness-support';
 import HeaderCake from 'components/header-cake';
 import {
-	isBusiness,
 	isChargeback,
 	isDomainMapping,
 	isDomainProduct,
 	isDomainRedemption,
 	isDomainRegistration,
 	isGoogleApps,
+	isGuidedTransfer,
 	isJetpackPlan,
 	isPlan,
+	isPersonal,
 	isPremium,
+	isBusiness,
 	isSiteRedirect,
 	isTheme
 } from 'lib/products-values';
 import JetpackPlanDetails from './jetpack-plan-details';
 import Main from 'components/main';
-import plansPaths from 'my-sites/plans/paths';
+import PersonalPlanDetails from './personal-plan-details';
 import PremiumPlanDetails from './premium-plan-details';
+import BusinessPlanDetails from './business-plan-details';
 import PurchaseDetail from 'components/purchase-detail';
 import { getFeatureByKey, shouldFetchSitePlans } from 'lib/plans';
 import SiteRedirectDetails from './site-redirect-details';
 import upgradesPaths from 'my-sites/upgrades/paths';
-import { showGuidesTour } from 'state/ui/actions';
 
 function getPurchases( props ) {
 	return props.receipt.data.purchases;
@@ -75,7 +78,6 @@ const CheckoutThankYou = React.createClass( {
 	},
 
 	componentDidMount() {
-		config.isEnabled( 'guidestours' ) && defer( () => this.props.undelayGuidesTour() );
 		this.redirectIfThemePurchased();
 
 		if ( this.props.receipt.hasLoadedFromServer && this.hasPlanOrDomainProduct() ) {
@@ -96,7 +98,11 @@ const CheckoutThankYou = React.createClass( {
 	componentWillReceiveProps( nextProps ) {
 		this.redirectIfThemePurchased();
 
-		if ( ! this.props.receipt.hasLoadedFromServer && nextProps.receipt.hasLoadedFromServer && this.hasPlanOrDomainProduct( nextProps ) ) {
+		if (
+			! this.props.receipt.hasLoadedFromServer &&
+			nextProps.receipt.hasLoadedFromServer &&
+			this.hasPlanOrDomainProduct( nextProps )
+		) {
 			this.props.refreshSitePlans( this.props.selectedSite.ID );
 		}
 	},
@@ -128,10 +134,14 @@ const CheckoutThankYou = React.createClass( {
 	goBack() {
 		if ( this.isDataLoaded() && ! this.isGenericReceipt() ) {
 			const purchases = getPurchases( this.props );
+			const site = this.props.selectedSite.slug;
 
 			if ( purchases.some( isPlan ) ) {
-				page( plansPaths.plans( this.props.selectedSite.slug ) );
-			} else if ( purchases.some( isDomainProduct ) || purchases.some( isDomainRedemption || purchases.some( isSiteRedirect ) ) ) {
+				page( `/plans/my-plan/${ site }` );
+			} else if (
+				purchases.some( isDomainProduct ) ||
+				purchases.some( isDomainRedemption || purchases.some( isSiteRedirect ) )
+			) {
 				page( upgradesPaths.domainManagementList( this.props.selectedSite.slug ) );
 			} else if ( purchases.some( isGoogleApps ) ) {
 				const purchase = find( purchases, isGoogleApps );
@@ -157,7 +167,10 @@ const CheckoutThankYou = React.createClass( {
 
 		return (
 			<Main className={ classes }>
-				<HeaderCake onClick={ this.goBack } isCompact backText={ this.translate( 'Back to my site' ) } />
+				<HeaderCake
+					onClick={ this.goBack }
+					isCompact
+					backText={ this.translate( 'Back to my site' ) } />
 
 				<Card className="checkout-thank-you__content">
 					{ this.productRelatedMessages() }
@@ -176,7 +189,8 @@ const CheckoutThankYou = React.createClass( {
 	 * Retrieves the component (and any corresponding data) that should be displayed according to the type of purchase
 	 * just performed by the user.
 	 *
-	 * @returns {*[]} an array of varying size with the component instance, then an optional purchase object possibly followed by a domain name
+	 * @returns {*[]} an array of varying size with the component instance,
+	 * then an optional purchase object possibly followed by a domain name
 	 */
 	getComponentAndPrimaryPurchaseAndDomain() {
 		if ( this.isDataLoaded() && ! this.isGenericReceipt() ) {
@@ -184,6 +198,8 @@ const CheckoutThankYou = React.createClass( {
 
 			if ( purchases.some( isJetpackPlan ) ) {
 				return [ JetpackPlanDetails, find( purchases, isJetpackPlan ) ];
+			} else if ( purchases.some( isPersonal ) ) {
+				return [ PersonalPlanDetails, find( purchases, isPersonal ) ];
 			} else if ( purchases.some( isPremium ) ) {
 				return [ PremiumPlanDetails, find( purchases, isPremium ) ];
 			} else if ( purchases.some( isBusiness ) ) {
@@ -198,6 +214,8 @@ const CheckoutThankYou = React.createClass( {
 				return [ SiteRedirectDetails, ...findPurchaseAndDomain( purchases, isSiteRedirect ) ];
 			} else if ( purchases.some( isChargeback ) ) {
 				return [ ChargebackDetails, find( purchases, isChargeback ) ];
+			} else if ( purchases.some( isGuidedTransfer ) ) {
+				return [ GuidedTransferDetails, find( purchases, isGuidedTransfer ) ];
 			}
 		}
 
@@ -287,9 +305,6 @@ export default connect(
 			refreshSitePlans( site ) {
 				dispatch( refreshSitePlans( site.ID ) );
 			},
-			undelayGuidesTour() {
-				dispatch( showGuidesTour( { shouldDelay: false } ) );
-			}
 		};
 	}
 )( CheckoutThankYou );

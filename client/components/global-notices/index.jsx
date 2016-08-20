@@ -12,8 +12,8 @@ import NoticeAction from 'components/notice/notice-action';
 import notices from 'notices';
 import observe from 'lib/mixins/data-observe';
 import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
-import { removeNotice } from 'state/notices/actions'
+import { removeNotice } from 'state/notices/actions';
+import { getNotices } from 'state/notices/selectors';
 
 const debug = debugModule( 'calypso:notices' );
 
@@ -51,42 +51,40 @@ const NoticesList = React.createClass( {
 	render() {
 		const noticesRaw = this.props.notices[ this.props.id ] || [];
 		let noticesList = noticesRaw.map( function( notice, index ) {
-				return (
-					<Notice
-						key={ 'notice-old-' + index }
-						status={ notice.status }
-						duration={ notice.duration || null }
-						text={ notice.text }
-						isCompact={ notice.isCompact }
-						onDismissClick={ this.removeNotice.bind( this, notice ) }
-						showDismiss={ notice.showDismiss }
-					>
-						{ notice.button &&
-							<NoticeAction
-								href={ notice.href }
-								onClick={ notice.onClick }
-							>
-								{ notice.button }
-							</NoticeAction> }
-						</Notice>
-				);
-			}, this );
+			return (
+				<Notice
+					key={ 'notice-old-' + index }
+					status={ notice.status }
+					duration={ notice.duration || null }
+					text={ notice.text }
+					isCompact={ notice.isCompact }
+					onDismissClick={ this.removeNotice.bind( this, notice ) }
+					showDismiss={ notice.showDismiss }
+				>
+					{ notice.button &&
+						<NoticeAction
+							href={ notice.href }
+							onClick={ notice.onClick }
+						>
+							{ notice.button }
+						</NoticeAction> }
+					</Notice>
+			);
+		}, this );
 
 		//This is an interim solution for displaying both notices from redux store
 		//and from the old component. When all notices are moved to redux store, this component
 		//needs to be updated.
 		noticesList = noticesList.concat( this.props.storeNotices.map( function( notice, index ) {
 			return (
-				<div className='global-notices__notice'>
-					<Notice
-						key={ 'notice-' + index }
-						status={ notice.status }
-						duration = { notice.duration || null }
-						showDismiss={ notice.showDismiss }
-						onDismissClick={ this.props.removeNotice.bind( this, notice.noticeId ) }
-						text={ notice.text }>
-					</Notice>
-				</div>
+				<Notice
+					key={ 'notice-' + index }
+					status={ notice.status }
+					duration = { notice.duration || null }
+					showDismiss={ notice.showDismiss }
+					onDismissClick={ this.props.removeNotice.bind( this, notice.noticeId ) }
+					text={ notice.text }>
+				</Notice>
 			);
 		}, this ) );
 
@@ -105,8 +103,8 @@ const NoticesList = React.createClass( {
 export default connect(
 	state => {
 		return {
-			storeNotices: state.notices.items
+			storeNotices: getNotices( state )
 		};
 	},
-	dispatch => bindActionCreators( { removeNotice }, dispatch )
+	{ removeNotice }
 )( NoticesList );

@@ -34,6 +34,8 @@ function getExternals() {
 	externals['bundler/hot-reloader'] = 'commonjs bundler/hot-reloader';
 	// Exclude the devdocs search-index, as it's huge.
 	externals['devdocs/search-index'] = 'commonjs devdocs/search-index';
+	// Exclude the devdocs components usage stats data
+	externals['devdocs/components-usage-stats.json'] = 'commonjs devdocs/components-usage-stats.json';
 	// Exclude server/bundler/assets, since the files it requires don't exist until the bundler has run
 	externals['bundler/assets'] = 'commonjs bundler/assets';
 
@@ -58,10 +60,11 @@ module.exports = {
 			{
 				test: /\.jsx?$/,
 				exclude: /(node_modules|devdocs\/search-index)/,
-				loader: 'babel-loader?optional[]=runtime'
+				loader: 'babel-loader'
 			},
 			{
 				test: /\.json$/,
+				exclude: /(devdocs\/components-usage-stats.json)/,
 				loader: 'json-loader'
 			}
 		]
@@ -82,7 +85,11 @@ module.exports = {
 		new webpack.BannerPlugin( 'require( "source-map-support" ).install();', { raw: true, entryOnly: false } ),
 		new webpack.NormalModuleReplacementPlugin( /^lib\/analytics$/, 'lodash/noop' ), // Depends on BOM
 		new webpack.NormalModuleReplacementPlugin( /^lib\/upgrades\/actions$/, 'lodash/noop' ), // Uses Flux dispatcher
-		new webpack.NormalModuleReplacementPlugin( /^lib\/route$/, 'lodash/noop' ) // Depends too much on page.js
+		new webpack.NormalModuleReplacementPlugin( /^lib\/route$/, 'lodash/noop' ), // Depends too much on page.js
+		new webpack.NormalModuleReplacementPlugin( /^my-sites\/themes\/thanks-modal$/, 'components/empty-component' ), // Depends on BOM
+		new webpack.NormalModuleReplacementPlugin( /^my-sites\/themes\/themes-site-selector-modal$/, 'components/empty-component' ), // Depends on BOM
+		new webpack.NormalModuleReplacementPlugin( /^state\/ui\/editor\/selectors$/, 'lodash/noop' ), // will never be called server-side
+		new webpack.NormalModuleReplacementPlugin( /^state\/posts\/selectors$/, 'lodash/noop' ) // will never be called server-side
 	],
 	externals: getExternals()
 };

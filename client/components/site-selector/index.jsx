@@ -13,8 +13,8 @@ import AllSites from 'my-sites/all-sites';
 import analytics from 'lib/analytics';
 import Button from 'components/button';
 import Gridicon from 'components/gridicon';
-import Site from 'my-sites/site';
-import SitePlaceholder from 'my-sites/site/placeholder';
+import Site from 'blocks/site';
+import SitePlaceholder from 'blocks/site/placeholder';
 import Search from 'components/search';
 import userModule from 'lib/user';
 import config from 'config';
@@ -105,7 +105,7 @@ export default React.createClass( {
 		return (
 			<span className="site-selector__add-new-site">
 				<Button compact borderless href={ config( 'signup_url' ) + '?ref=calypso-selector' } onClick={ this.recordAddNewSite }>
-					<Gridicon icon="add-outline" /> { this.translate( 'Add New WordPress' ) }
+					<Gridicon icon="add-outline" /> { this.translate( 'Add New Site' ) }
 				</Button>
 			</span>
 		);
@@ -305,6 +305,7 @@ export default React.createClass( {
 						onSearch={ this.onSearch }
 						autoFocus={ this.props.autoFocus }
 						disabled={ ! this.props.sites.initialized }
+						onSearchClose={ this.props.onClose }
 					/>
 					<div className="site-selector__sites" ref="selector">
 						{ this.renderAllSites() }

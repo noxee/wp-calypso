@@ -5,12 +5,12 @@ import find from 'lodash/find';
 import without from 'lodash/without';
 import mapKeys from 'lodash/mapKeys';
 import camelCase from 'lodash/camelCase';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
-import {type as domainTypes} from './constants';
-import i18n from 'lib/mixins/i18n';
+import { type as domainTypes } from './constants';
 
 function createDomainObjects( dataTransferObject ) {
 	let domains = [];
@@ -28,6 +28,8 @@ function createDomainObjects( dataTransferObject ) {
 			googleAppsSubscription: assembleGoogleAppsSubscription( domain.google_apps_subscription ),
 			hasPrivacyProtection: domain.has_private_registration,
 			isAutoRenewing: domain.auto_renewing,
+			currentUserCanManage: domain.current_user_can_manage || domain.is_current_user_owner,
+			isWhoisEditable: domain.is_whois_editable,
 			isPendingIcannVerification: domain.is_pending_icann_verification,
 			isPrimary: domain.primary_domain,
 			manualTransferRequired: domain.manual_transfer_required,

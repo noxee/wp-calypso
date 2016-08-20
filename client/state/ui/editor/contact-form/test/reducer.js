@@ -25,10 +25,6 @@ describe( 'editor\'s contact form state reducer', () => {
 	useMockery();
 
 	before( () => {
-		mockery.registerMock( 'lib/mixins/i18n', {
-			translate: string => string
-		} );
-
 		reducer = require( '../reducer' );
 	} );
 
@@ -84,7 +80,7 @@ describe( 'editor\'s contact form state reducer', () => {
 					{ label: 'Email' },
 					{ label: 'Website' },
 					{ label: 'Comment' },
-					{ label: 'Text', type: 'text' }
+					{ label: 'Text', type: 'text', isExpanded: true }
 				]
 			} );
 		} );
@@ -97,7 +93,7 @@ describe( 'editor\'s contact form state reducer', () => {
 				{ label: 'Email', type: 'email', required: true },
 				{ label: 'Website', type: 'url' },
 				{ label: 'Comment', type: 'textarea', required: true },
-				{ label: 'Text', type: 'text' }
+				{ label: 'Text', type: 'text', isExpanded: true }
 			] } );
 			assert.deepEqual( CONTACT_FORM_DEFAULT, { fields: [
 				{ label: 'Name', type: 'name', required: true },

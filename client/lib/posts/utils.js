@@ -2,8 +2,9 @@
  * External dependecies
  */
 var url = require( 'url' ),
-	i18n = require( 'lib/mixins/i18n' ),
+	i18n = require( 'i18n-calypso' ),
 	moment = require( 'moment-timezone' );
+import includes from 'lodash/includes';
 
 /**
  * Internal dependencies
@@ -14,7 +15,13 @@ var postNormalizer = require( 'lib/post-normalizer' ),
 var utils = {
 
 	getEditURL: function( post, site ) {
-		return `/${post.type}/${site.slug}/${post.ID}`;
+		let basePath = '';
+
+		if ( ! includes( [ 'post', 'page' ], post.type ) ) {
+			basePath = '/edit';
+		}
+
+		return `${basePath}/${post.type}/${site.slug}/${post.ID}`;
 	},
 
 	getPreviewURL: function( post ) {
@@ -62,11 +69,15 @@ var utils = {
 	},
 
 	isPublished: function( post ) {
-		return post && ( post.status === 'publish' || post.status === 'private' );
+		return post && ( post.status === 'publish' || post.status === 'private' || this.isBackDatedPublished( post ) );
 	},
 
 	isPrivate: function( post ) {
 		return post && ( 'private' === post.status );
+	},
+
+	isPending: function( post ) {
+		return post && ( 'pending' === post.status );
 	},
 
 	getEditedTime: function( post ) {
@@ -79,6 +90,14 @@ var utils = {
 		}
 
 		return post.modified;
+	},
+
+	isBackDatedPublished: function( post ) {
+		if ( ! post || post.status !== 'future' ) {
+			return false;
+		}
+
+		return moment( post.date ).isBefore( moment() );
 	},
 
 	isFutureDated: function( post ) {

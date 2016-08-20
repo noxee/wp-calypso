@@ -1,11 +1,15 @@
+/** @ssr-ready **/
+
 /**
  * Internal dependencies
  */
 import {
 	SELECTED_SITE_SET,
-	SET_SECTION,
-	SHOW_GUIDESTOUR,
-	UPDATE_GUIDESTOUR,
+	ROUTE_SET,
+	SECTION_SET,
+	PREVIEW_IS_SHOWING,
+	PREVIEW_URL_SET,
+	PREVIEW_URL_CLEAR,
 } from 'state/action-types';
 
 /**
@@ -35,8 +39,23 @@ export function setAllSitesSelected() {
 	};
 }
 
+/**
+ * Returns an action object signalling that the current route is to be changed
+ *
+ * @param  {String} path    Route path
+ * @param  {Object} [query] Query arguments
+ * @return {Object}         Action object
+ */
+export function setRoute( path, query = {} ) {
+	return {
+		type: ROUTE_SET,
+		path,
+		query,
+	};
+}
+
 export function setSection( section, options = {} ) {
-	options.type = SET_SECTION;
+	options.type = SECTION_SET;
 	if ( section ) {
 		options.section = section;
 	}
@@ -44,25 +63,22 @@ export function setSection( section, options = {} ) {
 	return options;
 }
 
-/**
- * Returns an action object which will be used to hide or show a specific tour.
- *
- * @param {Object} options Options object, see fn signature.
- * @return {Object} Action object
- */
-export function showGuidesTour( { shouldShow, shouldDelay = false, tour = 'main', siteId = null } ) {
+export function setPreviewShowing( isShowing ) {
 	return {
-		type: SHOW_GUIDESTOUR,
-		shouldShow,
-		shouldDelay,
-		tour,
-		siteId,
-	}
+		type: PREVIEW_IS_SHOWING,
+		isShowing,
+	};
 }
 
-export function nextGuidesTourStep( stepName ) {
+export function setPreviewUrl( url ) {
 	return {
-		type: UPDATE_GUIDESTOUR,
-		stepName,
+		type: PREVIEW_URL_SET,
+		url,
+	};
+}
+
+export function clearPreviewUrl() {
+	return {
+		type: PREVIEW_URL_CLEAR,
 	};
 }

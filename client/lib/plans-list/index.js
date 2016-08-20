@@ -10,11 +10,6 @@ import store from 'store';
  */
 import wpcom from 'lib/wp';
 import Emitter from 'lib/mixins/emitter';
-import {
-	PLAN_FREE,
-	PLAN_PREMIUM,
-	PLAN_BUSINESS
-} from 'lib/plans/constants';
 
 /**
  * Module vars
@@ -40,22 +35,13 @@ function PlansList() {
 Emitter( PlansList.prototype );
 
 /**
- * Set up a mapping from product_slug to a pretty path
- */
-const pathToSlugMapping = {
-	beginner: PLAN_FREE,
-	premium: PLAN_PREMIUM,
-	business: PLAN_BUSINESS
-};
-
-/**
  * Get list of plans from current object or store,
  * trigger fetch on first request to update stale data
  *
  * @return {Object} list of plans object
  */
 PlansList.prototype.get = function() {
-	var data;
+	let data;
 	if ( ! this.data ) {
 		debug( 'First time loading PlansList, check store' );
 		data = store.get( 'PlansList' );
@@ -76,15 +62,15 @@ PlansList.prototype.get = function() {
  */
 PlansList.prototype.fetch = function() {
 	debug( 'getting PlansList from api' );
-	wpcom.undocumented().getPlans( function( error, data ) {
-		var plans;
-
+	wpcom
+	.plans()
+	.list( { apiVersion: '1.2' }, function( error, data ) {
 		if ( error ) {
 			debug( 'error fetching PlansList from api', error );
 			return;
 		}
 
-		plans = this.parse( data );
+		const plans = this.parse( data );
 
 		debug( 'PlansList fetched from api:', plans );
 
@@ -129,27 +115,22 @@ PlansList.prototype.update = function( plans ) {
 };
 
 /**
- * Map the plan path to the product_slug
+ * Search in the plans list for a plan with a certain slug
  *
- * @param {String} path - plan path
- * @return {String} plan
+ * @param {string} slug - Slug to search
+ * @return {array} a list of plans that match the search term
  */
-PlansList.prototype.getSlugFromPath = function( path ) {
-	return pathToSlugMapping[ path ];
-};
-
-/**
- * Map the product_slug to the plan path
- *
- * @param {String} slug - product path
- * @return {String} plan
- */
-PlansList.prototype.getPathFromSlug = function( slug ) {
-	return Object.keys( pathToSlugMapping ).filter( function( path ) {
-		if ( slug === pathToSlugMapping[ path ] ) {
-			return path;
+PlansList.prototype.getPlanBySlug = function( slug ) {
+	if ( ! this.data ) {
+		return null;
+	}
+	const filteredPlans = this.data.filter( ( plan ) => {
+		if ( plan && plan.product_slug === slug ) {
+			return plan;
 		}
 	} );
+
+	return filteredPlans[ 0 ];
 };
 
 // Save the plans to memory to save them being fetched

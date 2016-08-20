@@ -15,7 +15,7 @@ const sites = sitesList();
 
 export default React.createClass( {
 
-	displayName: 'PlanStorageExample',
+	displayName: 'PlanStorage',
 
 	mixins: [ PureRenderMixin ],
 
@@ -38,27 +38,29 @@ export default React.createClass( {
 				max_storage_bytes: 3221225472
 			}
 		};
+		const primarySite = sites.initialized && sites.getPrimary();
+		const siteId = primarySite ? primarySite.ID : 0;
 		return (
 			<div className="design-assets__group">
 				<h2>
-					<a href="/devdocs/app-components/plan-storage">Plan Storage</a>
+					<a href="/devdocs/blocks/plan-storage">Plan Storage</a>
 				</h2>
-				<div>
-					<PlanStorage siteId={ sites.getPrimary().ID } />
+				<div style={ { marginBottom: 16 } }>
+					<PlanStorage siteId={ siteId } />
 				</div>
-				<div>
+				<div style={ { marginBottom: 16 } }>
 					<PlanStorageButton
 						sitePlanName={ plans.free }
 						mediaStorage={ mediaStorage.green }
 					/>
 				</div>
-				<div>
+				<div style={ { marginBottom: 16 } }>
 					<PlanStorageButton
 						sitePlanName={ plans.free }
 						mediaStorage={ mediaStorage.yellow }
 					/>
 				</div>
-				<div>
+				<div style={ { marginBottom: 16 } }>
 					<PlanStorageButton
 						sitePlanName={ plans.premium }
 						mediaStorage={ mediaStorage.red }

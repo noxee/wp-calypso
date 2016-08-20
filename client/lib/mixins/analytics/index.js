@@ -69,7 +69,7 @@ const EVENTS = {
 			analytics.tracks.recordEvent( 'calypso_domain_search_results_mapping_button_click', { section } );
 		},
 
-		searchFormSubmit( searchBoxValue, section ) {
+		searchFormSubmit( searchBoxValue, section, timeDiffFromLastSearch, searchCount, searchVendor ) {
 			analytics.ga.recordEvent(
 				'Domain Search',
 				'Submitted Search Form',
@@ -81,6 +81,57 @@ const EVENTS = {
 				'calypso_domain_search',
 				{
 					search_box_value: searchBoxValue,
+					seconds_from_last_search: timeDiffFromLastSearch,
+					search_count: searchCount,
+					search_vendor: searchVendor,
+					section
+				}
+			);
+		},
+
+		searchFormView( section ) {
+			analytics.ga.recordEvent(
+				'Domain Search',
+				'Landed on Search'
+			);
+
+			analytics.tracks.recordEvent( 'calypso_domain_search_pageview', { section } );
+		},
+
+		searchResultsReceive( searchQuery, searchResults, responseTimeInMs, resultCount, section ) {
+			analytics.ga.recordEvent(
+				'Domain Search',
+				'Receive Results',
+				'Response Time',
+				responseTimeInMs
+			);
+
+			analytics.tracks.recordEvent(
+				'calypso_domain_search_results_suggestions_receive',
+				{
+					search_query: searchQuery,
+					results: searchResults.join( ';' ),
+					response_time_ms: responseTimeInMs,
+					result_count: resultCount,
+					section
+				}
+			);
+		},
+
+		domainAvailabilityReceive( searchQuery, availableStatus, responseTimeInMs, section ) {
+			analytics.ga.recordEvent(
+				'Domain Search',
+				'Domain Availability Result',
+				'Domain Available Status',
+				availableStatus
+			);
+
+			analytics.tracks.recordEvent(
+				'calypso_domain_search_results_availability_receive',
+				{
+					search_query: searchQuery,
+					available_status: availableStatus,
+					response_time: responseTimeInMs,
 					section
 				}
 			);
@@ -523,6 +574,46 @@ const EVENTS = {
 					{
 						domain_name: domainName,
 						email
+					}
+				);
+			},
+
+			pendingAccountLogInClick( { siteSlug, domainName, user, severity, isMultipleDomains, section } ) {
+				analytics.ga.recordEvent(
+					'Domain Management',
+					`Clicked "Log in" link in Google Apps pending ToS notice in ${ section }`,
+					'Domain Name',
+					domainName
+				);
+
+				analytics.tracks.recordEvent(
+					'calypso_domain_management_google_apps_pending_account_log_in_click',
+					{
+						site_slug: siteSlug,
+						domain_name: domainName,
+						user,
+						severity,
+						is_multiple_domains: isMultipleDomains,
+						section
+					}
+				);
+			},
+
+			showPendingAccountNotice( { siteSlug, severity, isMultipleDomains, section } ) {
+				analytics.ga.recordEvent(
+					'Domain Management',
+					'Showed pending account notice',
+					'Site',
+					siteSlug
+				);
+
+				analytics.tracks.recordEvent(
+					'calypso_domain_management_google_apps_pending_account_notice_show',
+					{
+						site_slug: siteSlug,
+						severity,
+						is_multiple_domains: isMultipleDomains,
+						section
 					}
 				);
 			}

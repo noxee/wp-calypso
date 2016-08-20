@@ -36,6 +36,7 @@ import analytics from 'lib/analytics';
 import SidebarNavigation from 'my-sites/sidebar-navigation';
 import EmptyContent from 'components/empty-content';
 import { userCan } from 'lib/site/utils';
+import EmailVerificationGate from 'components/email-verification/email-verification-gate';
 
 /**
  * Module variables
@@ -82,7 +83,7 @@ const InvitePeople = React.createClass( {
 		if ( sendInvitesSuccess ) {
 			this.setState( this.resetState() );
 			analytics.tracks.recordEvent( 'calypso_invite_people_form_refresh_initial' );
-			debug( 'Submit successful. Resetting form.' )
+			debug( 'Submit successful. Resetting form.' );
 		} else {
 			const sendInvitesErrored = InvitesSentStore.getErrors( this.state.formId );
 			const errors = get( sendInvitesErrored, 'errors', {} );
@@ -313,67 +314,69 @@ const InvitePeople = React.createClass( {
 					{ this.translate( 'Invite People' ) }
 				</HeaderCake>
 				<Card>
-					<form onSubmit={ this.submitForm } >
-						<FormFieldset>
-							<FormLabel>{ this.translate( 'Usernames or Emails' ) }</FormLabel>
-							<TokenField
-								isBorderless
-								tokenizeOnSpace
-								maxLength={ 10 }
-								value={ this.getTokensWithStatus() }
-								onChange={ this.onTokensChange }
-								onFocus={ this.onFocusTokenField }
-								disabled={ this.state.sendingInvites }/>
-							<FormSettingExplanation>
+					<EmailVerificationGate>
+						<form onSubmit={ this.submitForm } >
+							<FormFieldset>
+								<FormLabel>{ this.translate( 'Usernames or Emails' ) }</FormLabel>
+								<TokenField
+									isBorderless
+									tokenizeOnSpace
+									maxLength={ 10 }
+									value={ this.getTokensWithStatus() }
+									onChange={ this.onTokensChange }
+									onFocus={ this.onFocusTokenField }
+									disabled={ this.state.sendingInvites }/>
+								<FormSettingExplanation>
+									{ this.translate(
+										'Invite up to 10 email addresses and/or WordPress.com usernames. ' +
+										'Those needing a username will be sent instructions on how to create one.'
+									) }
+								</FormSettingExplanation>
+							</FormFieldset>
+
+							<RoleSelect
+								id="role"
+								name="role"
+								key={ this.props.site.ID }
+								includeFollower
+								siteId={ this.props.site.ID }
+								onChange={ this.onRoleChange }
+								onFocus={ this.onFocusRoleSelect }
+								value={ this.state.role }
+								disabled={ this.state.sendingInvites }
+								explanation={ this.renderRoleExplanation() }
+								/>
+
+							<FormFieldset>
+								<FormLabel htmlFor="message">{ this.translate( 'Custom Message' ) }</FormLabel>
+								<CountedTextarea
+									name="message"
+									id="message"
+									showRemainingCharacters
+									maxLength={ 500 }
+									acceptableLength={ 500 }
+									onChange={ this.onMessageChange }
+									onFocus={ this.onFocusCustomMessage }
+									value={ this.state.message }
+									disabled={ this.state.sendingInvites } />
+								<FormSettingExplanation>
+									{ this.translate(
+										'(Optional) You can enter a custom message of up to 500 characters that will be included in the invitation to the user(s).'
+									) }
+								</FormSettingExplanation>
+							</FormFieldset>
+
+							<FormButton disabled={ this.isSubmitDisabled() } onClick={ this.onClickSendInvites } >
 								{ this.translate(
-									'Invite up to 10 email addresses and/or WordPress.com usernames. ' +
-									'Those needing a username will be sent instructions on how to create one.'
+									'Send Invitation',
+									'Send Invitations', {
+										count: this.state.usernamesOrEmails.length || 1,
+										context: 'Button label'
+									}
 								) }
-							</FormSettingExplanation>
-						</FormFieldset>
-
-						<RoleSelect
-							id="role"
-							name="role"
-							key="role"
-							includeFollower
-							siteId={ this.props.site.ID }
-							onChange={ this.onRoleChange }
-							onFocus={ this.onFocusRoleSelect }
-							value={ this.state.role }
-							disabled={ this.state.sendingInvites }
-							explanation={ this.renderRoleExplanation() }
-							/>
-
-						<FormFieldset>
-							<FormLabel htmlFor="message">{ this.translate( 'Custom Message' ) }</FormLabel>
-							<CountedTextarea
-								name="message"
-								id="message"
-								showRemainingCharacters
-								maxLength={ 500 }
-								acceptableLength={ 500 }
-								onChange={ this.onMessageChange }
-								onFocus={ this.onFocusCustomMessage }
-								value={ this.state.message }
-								disabled={ this.state.sendingInvites } />
-							<FormSettingExplanation>
-								{ this.translate(
-									'(Optional) You can enter a custom message of up to 500 characters that will be included in the invitation to the user(s).'
-								) }
-							</FormSettingExplanation>
-						</FormFieldset>
-
-						<FormButton disabled={ this.isSubmitDisabled() } onClick={ this.onClickSendInvites } >
-							{ this.translate(
-								'Send Invitation',
-								'Send Invitations', {
-									count: this.state.usernamesOrEmails.length || 1,
-									context: 'Button label'
-								}
-							) }
-						</FormButton>
-					</form>
+							</FormButton>
+						</form>
+					</EmailVerificationGate>
 				</Card>
 			</Main>
 		);

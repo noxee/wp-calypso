@@ -1,7 +1,9 @@
 /**
 * External dependencies
 */
-import React from 'react';
+import React, { PropTypes } from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import page from 'page';
 import toTitleCase from 'to-title-case';
 import trim from 'lodash/trim';
@@ -9,6 +11,7 @@ import trim from 'lodash/trim';
 /**
  * Internal dependencies
  */
+import config from 'config';
 import SearchCard from 'components/search-card';
 import SearchDemo from 'components/search/docs/example';
 import Notices from 'components/notice/docs/example';
@@ -25,17 +28,20 @@ import TokenFields from 'components/token-field/docs/example';
 import CountedTextareas from 'components/forms/counted-textarea/docs/example';
 import ProgressBar from 'components/progress-bar/docs/example';
 import Popovers from 'components/popover/docs/example';
+import EllipsisMenu from 'components/ellipsis-menu/docs/example';
 import Ranges from 'components/forms/range/docs/example';
 import Gauge from 'components/gauge/docs/example';
 import Headers from 'components/header-cake/docs/example';
 import DropZones from 'components/drop-zone/docs/example';
 import FormFields from 'components/forms/docs/example';
 import SectionNav from 'components/section-nav/docs/example';
-import Spinners from 'components/spinner/docs/example';
+import Spinner from 'components/spinner/docs/example';
+import SpinnerLine from 'components/spinner-line/docs/example';
 import Rating from 'components/rating/docs/example';
 import DatePicker from 'components/date-picker/docs/example';
 import InputChrono from 'components/input-chrono/docs/example';
-import TimezoneDropdown from 'components/timezone-dropdown/docs/example';
+import Ribbon from 'components/ribbon/docs/example';
+import Timezone from 'components/timezone/docs/example';
 import ClipboardButtons from 'components/forms/clipboard-button/docs/example';
 import ClipboardButtonInput from 'components/clipboard-button-input/docs/example';
 import HeaderCake from 'components/header-cake';
@@ -50,12 +56,22 @@ import ExternalLink from 'components/external-link/docs/example';
 import FeatureGate from 'components/feature-example/docs/example';
 import FilePickers from 'components/file-picker/docs/example';
 import Collection from 'devdocs/design/search-collection';
+import fetchComponentsUsageStats from 'state/components-usage-stats/actions';
+import FAQ from 'components/faq/docs/example';
+import VerticalMenu from 'components/vertical-menu/docs/example';
 
-export default React.createClass( {
+let DesignAssets = React.createClass( {
 	displayName: 'DesignAssets',
 
 	getInitialState() {
 		return { filter: '' };
+	},
+
+	componentWillMount() {
+		if ( config.isEnabled( 'devdocs/components-usage-stats' ) ) {
+			const { dispatchFetchComponentsUsageStats } = this.props;
+			dispatchFetchComponentsUsageStats();
+		}
 	},
 
 	onSearch( term ) {
@@ -67,6 +83,7 @@ export default React.createClass( {
 	},
 
 	render() {
+		const { componentsUsageStats = {} } = this.props;
 		return (
 			<div className="design-assets" role="main">
 				{
@@ -82,10 +99,10 @@ export default React.createClass( {
 					</SearchCard>
 				}
 				<Collection component={ this.props.component } filter={ this.state.filter }>
-					<Accordions />
+					<Accordions componentUsageStats={ componentsUsageStats.accordion } />
 					<BulkSelect />
 					<ButtonGroups />
-					<Buttons />
+					<Buttons componentUsageStats={ componentsUsageStats.button } />
 					<Cards />
 					<ClipboardButtonInput />
 					<ClipboardButtons />
@@ -93,7 +110,9 @@ export default React.createClass( {
 					<CountedTextareas />
 					<DatePicker />
 					<DropZones searchKeywords="drag" />
+					<EllipsisMenu />
 					<ExternalLink />
+					<FAQ />
 					<FeatureGate />
 					<FilePickers />
 					<FoldableCard />
@@ -110,18 +129,48 @@ export default React.createClass( {
 					<ProgressBar />
 					<Ranges />
 					<Rating />
+					<Ribbon />
 					<SearchDemo />
 					<SectionHeader />
 					<SectionNav />
 					<SegmentedControl />
 					<SelectDropdown searchKeywords="menu" />
 					<SocialLogos />
-					<Spinners searchKeywords="loading" />
-					<TimezoneDropdown />
+					<Spinner searchKeywords="loading" />
+					<SpinnerLine searchKeywords="loading" />
+					<Timezone />
 					<TokenFields />
+					<VerticalMenu />
 					<Version />
 				</Collection>
 			</div>
 		);
 	}
 } );
+
+if ( config.isEnabled( 'devdocs/components-usage-stats' ) ) {
+	const mapStateToProps = ( state ) => {
+		const { componentsUsageStats } = state;
+
+		return componentsUsageStats;
+	};
+
+	const mapDispatchToProps = ( dispatch ) => {
+		return bindActionCreators( {
+			dispatchFetchComponentsUsageStats: fetchComponentsUsageStats
+		}, dispatch );
+	};
+
+	DesignAssets.propTypes = {
+		componentsUsageStats: PropTypes.object,
+		isFetching: PropTypes.bool,
+		dispatchFetchComponentsUsageStats: PropTypes.func
+	};
+
+	DesignAssets = connect(
+		mapStateToProps,
+		mapDispatchToProps
+	)( DesignAssets );
+}
+
+export default DesignAssets;

@@ -1,13 +1,13 @@
 /**
  * External dependencies
  */
-var ReactDom = require( 'react-dom' ),
-	React = require( 'react' );
+import React from 'react';
+import ReactDom from 'react-dom';
 
 /**
  * Internal dependencies
  */
-var SelectDropdown = require( 'components/select-dropdown' );
+import SelectDropdown from 'components/select-dropdown';
 
 /**
  * Constants
@@ -16,7 +16,7 @@ var SelectDropdown = require( 'components/select-dropdown' );
 // Needed so that computed width more or less matches actual width :/
 const WIDTH_CORRECTION = 2.5;
 
-var ThemesSelectDropdown = React.createClass( {
+const ThemesSelectDropdown = React.createClass( {
 	propTypes: {
 		tier: React.PropTypes.string.isRequired,
 		options: React.PropTypes.array.isRequired,
@@ -49,9 +49,9 @@ var ThemesSelectDropdown = React.createClass( {
 		return <SelectDropdown
 				style={ this.state.style }
 				initialSelected={ this.props.tier }
+				tipTarget="themes-tier-dropdown"
 				{ ...this.props } />;
 	}
 } );
 
-module.exports = ThemesSelectDropdown;
-
+export default ThemesSelectDropdown;

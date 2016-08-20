@@ -1,27 +1,27 @@
 /**
 * External dependencies
 */
-var React = require( 'react' ),
-	PureRenderMixin = require( 'react-pure-render/mixin' );
+import React from 'react';
+import PureRenderMixin from 'react-pure-render/mixin';
 
 /**
  * Internal dependencies
  */
-var LikeButton = require( 'components/like-button/button' ),
-	Card = require( 'components/card/compact' );
+import LikeButton from 'components/like-button/button';
+import Card from 'components/card/compact';
 
-var SimpleLikeButtonContainer = React.createClass( {
+const SimpleLikeButtonContainer = React.createClass( {
 
 	mixins: [ PureRenderMixin ],
 
-	getInitialState: function() {
+	getInitialState() {
 		return {
 			liked: !! this.props.liked,
 			count: this.props.likeCount || 0
 		};
 	},
 
-	render: function() {
+	render() {
 		return (
 			<LikeButton { ...this.props }
 				onLikeToggle={ this.handleLikeToggle }
@@ -30,7 +30,7 @@ var SimpleLikeButtonContainer = React.createClass( {
 			/> );
 	},
 
-	handleLikeToggle: function( newState ) {
+	handleLikeToggle( newState ) {
 		this.setState( {
 			liked: newState,
 			count: this.state.count += ( newState ? 1 : -1 )
@@ -38,27 +38,24 @@ var SimpleLikeButtonContainer = React.createClass( {
 	}
 } );
 
-var LikeButtons = React.createClass( {
+const LikeButtons = React.createClass( {
 	displayName: 'LikeButton',
 
 	mixins: [ PureRenderMixin ],
 
-	render: function() {
+	render() {
 		return (
 			<div className="design-assets__group">
 				<h2>
-					<a href="/devdocs/app-components/like-button">Like button</a>
+					<a href="/devdocs/blocks/like-button">Like button</a>
 				</h2>
-				<Card>
-					<span>No likes:</span>
+				<Card compact>
 					<SimpleLikeButtonContainer tagName="button" likeCount={ 0 } />
 				</Card>
-				<Card>
-					<span>Has likes, not liked:</span>
+				<Card compact>
 					<SimpleLikeButtonContainer tagName="button" likeCount={ 12 } />
 				</Card>
-				<Card>
-					<span>Liked:</span>
+				<Card compact>
 					<SimpleLikeButtonContainer tagName="button" likeCount={ 12 } liked={ true } />
 				</Card>
 			</div>
@@ -66,4 +63,4 @@ var LikeButtons = React.createClass( {
 	}
 } );
 
-module.exports = LikeButtons;
+export default LikeButtons;

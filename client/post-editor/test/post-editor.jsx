@@ -30,10 +30,6 @@ describe( 'PostEditor', function() {
 
 		mockery.registerSubstitute( 'matches-selector', 'component-matches-selector' );
 		mockery.registerSubstitute( 'query', 'component-query' );
-		mockery.registerMock( 'component-classes', () => {} );
-		mockery.registerMock( 'lib/mixins/i18n', {
-			translate: ( string ) => string
-		} );
 		mockery.registerMock( 'components/tinymce', MOCK_COMPONENT );
 		mockery.registerMock( 'components/popover', MOCK_COMPONENT );
 		mockery.registerMock( 'components/forms/clipboard-button', MOCK_COMPONENT );
@@ -41,6 +37,7 @@ describe( 'PostEditor', function() {
 		mockery.registerMock( 'components/notice', MOCK_COMPONENT );
 		mockery.registerMock( 'components/segmented-control', MOCK_COMPONENT );
 		mockery.registerMock( 'components/segmented-control/item', MOCK_COMPONENT );
+		mockery.registerMock( 'post-editor/editor-document-head', MOCK_COMPONENT );
 		mockery.registerMock( 'post-editor/editor-action-bar', MOCK_COMPONENT );
 		mockery.registerMock( 'post-editor/editor-drawer', MOCK_COMPONENT );
 		mockery.registerMock( 'post-editor/editor-featured-image', MOCK_COMPONENT );
@@ -67,7 +64,7 @@ describe( 'PostEditor', function() {
 		SitesList = require( 'lib/sites-list/list' );
 		PostEditStore = require( 'lib/posts/post-edit-store' );
 		PostEditor = require( '../post-editor' );
-		PostEditor.prototype.__reactAutoBindMap.translate = ( string ) => string;
+		PostEditor.prototype.translate = ( string ) => string;
 	} );
 
 	afterEach( function() {

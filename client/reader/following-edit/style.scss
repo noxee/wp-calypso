@@ -27,12 +27,10 @@
 	}
 
 	.follow-button__label {
-		display: none;
-	}
 
-	.reader-list-item__title,
-	.reader-list-item__description {
-		margin-right: 0;
+		@include breakpoint( "<660px" ) {
+			display: none;
+		}
 	}
 
 	.external-link .gridicons-external {
@@ -53,7 +51,6 @@
 		color: $gray;
 		font-weight: 600;
 		font-size: 12px;
-		margin-right: 8px;
 		text-transform: capitalize;
 	}
 
@@ -83,7 +80,6 @@
 	}
 }
 
-
 // Sort Controls
 .following-edit__sort-controls {
 	float: left;
@@ -109,8 +105,20 @@
 }
 
 .following-edit__search {
-	color: $blue-wordpress;
-	cursor: pointer;
+	margin-right: 0;
+	padding: 0;
+
+	.gridicons-search {
+		color: $blue-wordpress;
+	}
+
+	&.button.is-borderless .gridicons-search {
+		top: 4px;
+	}
+
+	&:focus .gridicons-search {
+		color: $blue-light;
+	}
 }
 
 
@@ -143,28 +151,10 @@
 			padding: 16px 24px;
 		}
 
-		.follow-button {
-			cursor: default;
-
-			@include breakpoint( "<660px" ) {
-				margin-top: 7px;
-			}
-
-			.gridicon {
-				cursor: default;
-				fill: lighten( $gray, 20% );
-			}
-
-			.follow-button__label {
-				color: lighten( $gray, 20% );
-				display: inline-block;
-			}
-		}
-
 		&.is-valid {
 
 			.gridicon {
-				fill: $blue-medium;
+				fill: $gray-dark;
 
 				&:hover,
 				&:active {
@@ -181,7 +171,7 @@
 			}
 
 			.follow-button__label {
-				color: $blue-medium;
+				color: $gray-dark;
 			}
 
 			.following-edit__list-title {
@@ -193,6 +183,7 @@
 }
 
 // Existing Feed Search
+
 .following-edit > .search-card {
 	position: relative;
 	margin-top: -58px;
@@ -259,7 +250,8 @@
 		margin-right: 100px;
 
 		@include breakpoint( ">660px" ) {
-			padding-left: 0;
+			margin-right: 100px;
+			padding-left: 3px;
 		}
 	}
 
@@ -301,7 +293,7 @@
 	color: $gray-dark;
 
 	&.is-compact {
-		padding: 10px 0;
+		padding: 10px 16px;
 
 		@include breakpoint( ">660px" ) {
 			padding-left: 105px;
@@ -369,20 +361,6 @@
 
 .following-edit__notification-settings-error {
 	margin-top: 14px;
-}
-
-@include breakpoint( ">660px" ) {
-	.following-edit {
-		.follow-button__label {
-			display: block;
-		}
-
-		.reader-list-item__title,
-		.reader-list-item__description {
-			margin-right: 100px;
-			padding-left: 3px;
-		}
-	}
 }
 
 .is-section-reader .main.following-edit .empty-content {

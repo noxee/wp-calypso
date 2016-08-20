@@ -6,6 +6,15 @@
 	margin: 0 0 15px 0;
 	padding: 0;
 
+	&.jetpack_free,
+	&.jetpack_premium,
+	&.jetpack_business,
+	&.jetpack_premium_monthly,
+	&.jetpack_business_monthly{
+		display: flex;
+		flex-direction: column;
+	}
+
 	&.is-placeholder {
 		.plan__plan-tagline {
 			@include placeholder( 23% );
@@ -40,6 +49,17 @@
 	overflow: hidden;
 	transition: all 0.4s ease-in-out;
 	width: 100%;
+
+	.jetpack_free &,
+	.jetpack_premium &,
+	.jetpack_business &
+	.jetpack_premium_monthly &
+	.jetpack_business_monthly & {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+	}
+
 }
 
 .plan__plan-details {
@@ -71,6 +91,14 @@
 		font-size: 13px;
 		display: block;
 		margin: 8px 0 0 0;
+	}
+
+	.jetpack_free &,
+	.jetpack_premium &,
+	.jetpack_business &
+	.jetpack_premium_monthly &
+	.jetpack_business_monthly & {
+		flex-grow: 1;
 	}
 }
 
@@ -112,6 +140,16 @@
 			top: 64px;
 			margin-left: 30px;
 		}
+
+		&.jetpack_free,
+		&.jetpack_premium,
+		&.jetpack_business,
+		&.jetpack_premium_monthly,
+		&.jetpack_business_monthly {
+			.plan__plan-tagline {
+				height: 32px;
+			}
+		}
 	}
 
 	.plan__plan-tagline {
@@ -124,7 +162,7 @@
 	}
 
 	.plan__plan-details {
-		min-height: 155px;
+		min-height: 209px;
 	}
 
 	.plan-list {
@@ -133,6 +171,7 @@
 			flex-wrap: nowrap;
 			justify-content: center;
 	}
+
 }
 
 .plans.has-sidebar {

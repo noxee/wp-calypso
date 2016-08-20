@@ -4,7 +4,7 @@
 import React from 'react';
 import ReactCSSTransitionGroup from 'react-addons-css-transition-group';
 import LinkedStateMixin from 'react-addons-linked-state-mixin';
-import i18n from 'lib/mixins/i18n';
+import i18n from 'i18n-calypso';
 import Debug from 'debug';
 import emailValidator from 'email-validator';
 import debounce from 'lodash/debounce';
@@ -373,7 +373,7 @@ const Account = React.createClass( {
 					href={ config( 'signup_url' ) }
 					onClick={ this.recordClickEvent( 'Primary Site Add New WordPress Button' ) }
 				>
-					{ this.translate( 'Add New WordPress' ) }
+					{ this.translate( 'Add New Site' ) }
 				</a>
 			);
 		}

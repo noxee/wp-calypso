@@ -1,24 +1,24 @@
 /**
  * External dependencies
  */
-var React = require( 'react' ),
-	ReactCSSTransitionGroup = require( 'react-addons-css-transition-group' ),
-	classNames = require( 'classnames' );
+import React from 'react';
+import ReactCSSTransitionGroup from 'react-addons-css-transition-group';
+import classNames from 'classnames';
 
 /**
  * Internal dependencies
  */
-var Card = require( 'components/card' ),
-	Gridicon = require( 'components/gridicon' ),
-	PostRelativeTimeStatus = require( 'my-sites/post-relative-time-status' ),
-	PostControls = require( './post-controls' ),
-	PostHeader = require( './post-header' ),
-	PostImage = require( '../post/post-image' ),
-	PostExcerpt = require( 'components/post-excerpt' ),
-	PostTotalViews = require( 'my-sites/posts/post-total-views' ),
-	utils = require( 'lib/posts/utils' ),
-	updatePostStatus = require( 'lib/mixins/update-post-status' ),
-	analytics = require( 'lib/analytics' );
+import Card from 'components/card';
+import Gridicon from 'components/gridicon';
+import PostRelativeTimeStatus from 'my-sites/post-relative-time-status';
+import PostControls from './post-controls';
+import PostHeader from './post-header';
+import PostImage from '../post/post-image';
+import PostExcerpt from 'components/post-excerpt';
+import PostTotalViews from 'my-sites/posts/post-total-views';
+import utils from 'lib/posts/utils';
+import updatePostStatus from 'lib/mixins/update-post-status';
+import analytics from 'lib/analytics';
 
 import Comments from 'reader/comments';
 
@@ -26,104 +26,101 @@ function recordEvent( eventAction ) {
 	analytics.ga.recordEvent( 'Posts', eventAction );
 }
 
-function checkPropsChange( nextProps, propArr ) {
-	var i, prop;
-
-	for( i = 0; i < propArr.length; i++ ) {
-		prop = propArr[ i ];
-		if ( nextProps[ prop ] !== this.props[ prop ] ) {
+function checkPropsChange( currentProps, nextProps, propArr ) {
+	for ( let i = 0; i < propArr.length; i++ ) {
+		const prop = propArr[ i ];
+		if ( nextProps[ prop ] !== currentProps[ prop ] ) {
 			return true;
 		}
 	}
 	return false;
 }
 
-module.exports = React.createClass({
+module.exports = React.createClass( {
 
 	displayName: 'Post',
 
 	mixins: [ updatePostStatus ],
 
-	getInitialState: function() {
+	getInitialState() {
 		return {
 			showMoreOptions: false,
 			showComments: false
 		};
 	},
 
-	shouldComponentUpdate: function( nextProps, nextState ) {
+	shouldComponentUpdate( nextProps, nextState ) {
+		const propsToCheck = [ 'ref', 'key', 'post', 'postImages', 'fullWidthPost', 'path' ];
 
-		var propsToCheck = [ 'ref', 'key', 'post', 'postImages', 'fullWidthPost', 'path' ];
-
-		if ( checkPropsChange.call( this, nextProps, propsToCheck ) ) {
+		if ( checkPropsChange( this.props, nextProps, propsToCheck ) ) {
 			return true;
 		}
+
 		if ( nextState.showMoreOptions !== this.props.showMoreOptions ) {
 			return true;
 		}
 
 		return false;
-
 	},
 
 	analyticsEvents: {
-		viewPost: function() {
+		viewPost() {
 			recordEvent( 'Clicked View Post' );
 		},
-		previewPost: function() {
+		previewPost() {
 			recordEvent( 'Clicked Preview Post' );
 		},
-		editPost: function() {
+		editPost() {
 			recordEvent( 'Clicked Edit Post' );
 		},
-		commentIconClick: function() {
+		commentIconClick() {
 			recordEvent( 'Clicked Post Comment Icon/Number' );
 		},
-		likeIconClick: function() {
+		likeIconClick() {
 			recordEvent( 'Clicked Post Likes Icon/Number' );
 		},
-		dateClick: function() {
+		dateClick() {
 			recordEvent( 'Clicked Post Date' );
 		},
-		featuredImageStandardClick: function() {
+		featuredImageStandardClick() {
 			recordEvent( 'Clicked Post Featured Image Standard' );
 		},
-		featuredImageLargeClick: function() {
+		featuredImageLargeClick() {
 			recordEvent( 'Clicked Post Featured Image Large' );
 		},
-		postTitleClick: function() {
+		postTitleClick() {
 			recordEvent( 'Clicked Post Title' );
 		},
-		postExcerptClick: function() {
+		postExcerptClick() {
 			recordEvent( 'Clicked Post Excerpt' );
 		},
-		viewStats: function() {
+		viewStats() {
 			recordEvent( 'Clicked View Post Stats' );
 		}
 
 	},
 
-	publishPost: function() {
+	publishPost() {
 		this.updatePostStatus( 'publish' );
 		recordEvent( 'Clicked Publish Post' );
 	},
 
-	restorePost: function() {
+	restorePost() {
 		this.updatePostStatus( 'restore' );
 		recordEvent( 'Clicked Restore Post' );
 	},
 
-	deletePost: function() {
+	deletePost() {
 		this.updatePostStatus( 'delete' );
 		recordEvent( 'Clicked Delete Post' );
 	},
 
-	trashPost: function() {
+	trashPost() {
 		this.updatePostStatus( 'trash' );
 		recordEvent( 'Clicked Trash Post' );
 	},
 
-	componentWillMount: function() {
+	componentWillMount() {
 		this.strings = {
 			trashing: this.translate( 'Trashing Post' ),
 			deleting: this.translate( 'Deleting Post' ),
@@ -139,22 +136,20 @@ module.exports = React.createClass({
 		};
 	},
 
-	canUserEditPost: function() {
-		var post = this.props.post;
+	canUserEditPost() {
+		const post = this.props.post;
 		return post.capabilities && post.capabilities.edit_post && post.status !== 'trash';
 	},
 
-	getPostClass: function() {
-		var postClasses = classNames( {
-			'post': true,
+	getPostClass() {
+		return classNames( {
+			post: true,
 			'is-protected': ( this.props.post.password ) ? true : false,
 			'show-more-options': this.state.showMoreOptions
 		} );
-
-		return postClasses;
 	},
 
-	getTitle: function() {
+	getTitle() {
 		if ( this.props.post.title ) {
 			return (
 				<a href={ this.getContentLinkURL() } className="post__title-link post__content-link" target={ this.getContentLinkTarget() } onClick={ this.analyticsEvents.postTitleClick }>
@@ -164,7 +159,7 @@ module.exports = React.createClass({
 		}
 	},
 
-	getPostImage: function() {
+	getPostImage() {
 		if ( ! this.props.postImages ) {
 			if ( this.props.post.canonical_image ) {
 				return (
@@ -180,15 +175,13 @@ module.exports = React.createClass({
 		);
 	},
 
-	getTrimmedExcerpt: function() {
-		var excerpt = this.props.post.excerpt,
-			trimmedExcerpt = ( excerpt.length <= 220 ) ? excerpt : excerpt.substring( 0, 220 ) + '\u2026';
-
-		return ( trimmedExcerpt );
+	getTrimmedExcerpt() {
+		const excerpt = this.props.post.excerpt;
+		return ( excerpt.length <= 220 ) ? excerpt : excerpt.substring( 0, 220 ) + '\u2026';
 	},
 
-	getExcerpt: function() {
-		var excerptElement;
+	getExcerpt() {
+		let excerptElement;
 
 		if ( ! this.props.post.excerpt ) {
 			return null;
@@ -207,19 +200,19 @@ module.exports = React.createClass({
 		);
 	},
 
-	getHeader: function() {
-		var selectedSite = this.props.sites.getSelectedSite(),
-			site = this.getSite();
+	getHeader() {
+		const selectedSite = this.props.sites.getSelectedSite();
+		const site = this.getSite();
 
 		if ( selectedSite && site.single_user_site ) {
 			return null;
 		}
 
-		return <PostHeader site={ site } author={ this.props.post.author.name } path={ this.props.path } showAuthor={ ! site.single_user_site } />;
+		return <PostHeader site={ site } author={ this.props.post.author ? this.props.post.author.name : '' } path={ this.props.path } showAuthor={ ! site.single_user_site } />;
 	},
 
-	getContent: function() {
-		var post = this.props.post;
+	getContent() {
+		const post = this.props.post;
 
 		if ( post.title || post.excerpt ) {
 			return (
@@ -231,21 +224,20 @@ module.exports = React.createClass({
 		}
 	},
 
-	getMeta: function() {
+	getMeta() {
 		// @todo Let's make these separate components
-		var post = this.props.post,
-			postId = this.props.post.ID,
-			site = this.getSite(),
-			isJetpack = site.jetpack,
-			showComments = ! isJetpack || site.isModuleActive( 'comments' ),
-			showLikes = ! isJetpack || site.isModuleActive( 'likes' ),
-			showStats = site.capabilities && site.capabilities.view_stats && ( ! isJetpack || site.isModuleActive( 'stats' ) ),
-			metaItems = [],
-			commentCountDisplay, commentHref, commentTitle, commentMeta,
+		const post = this.props.post;
+		const postId = this.props.post.ID;
+		const site = this.getSite();
+		const isJetpack = site.jetpack;
+		let showComments = ! isJetpack || site.isModuleActive( 'comments' );
+		let showLikes = ! isJetpack || site.isModuleActive( 'likes' );
+		const showStats = site.capabilities && site.capabilities.view_stats && ( ! isJetpack || site.isModuleActive( 'stats' ) );
+		const metaItems = [];
+		let commentCountDisplay, commentTitle, commentMeta,
 			likeCountDisplay, likeTitle, likeMeta, footerMetaItems;
 
 		if ( showComments ) {
-			commentHref = post.URL + '#comments';
 			if ( post.discussion && post.discussion.comment_count > 0 ) {
 				commentTitle = this.translate( '%(count)s Comment', '%(count)s Comments', {
 					count: post.discussion.comment_count,
@@ -254,13 +246,11 @@ module.exports = React.createClass({
 					}
 				} );
 				commentCountDisplay = this.numberFormat( post.discussion.comment_count );
+			} else if ( post.discussion.comments_open ) {
+				commentTitle = this.translate( 'Comments' );
 			} else {
-				if ( post.discussion.comments_open ) {
-					commentTitle = this.translate( 'Comments' );
-				} else {
-					// No comments recorded & they're disabled, don't show the icon
-					showComments = false;
-				}
+				// No comments recorded & they're disabled, don't show the icon
+				showComments = false;
 			}
 			if ( showComments ) {
 				commentMeta = (
@@ -268,7 +258,7 @@ module.exports = React.createClass({
 						className={
 							classNames( {
 								post__comments: true,
-								"is-empty": ! commentCountDisplay
+								'is-empty': ! commentCountDisplay
 							} )
 						}
 						title={ commentTitle }
@@ -291,13 +281,11 @@ module.exports = React.createClass({
 					}
 				} );
 				likeCountDisplay = this.numberFormat( post.like_count );
+			} else if ( post.likes_enabled ) {
+				likeTitle = this.translate( 'Likes' );
 			} else {
-				if ( post.likes_enabled ) {
-					likeTitle = this.translate( 'Likes' );
-				} else {
-					// No likes recorded & they're disabled, don't show the icon
-					showLikes = false;
-				}
+				// No likes recorded & they're disabled, don't show the icon
+				showLikes = false;
 			}
 			if ( showLikes ) {
 				likeMeta = (
@@ -305,7 +293,7 @@ module.exports = React.createClass({
 						href={ post.URL }
 						className={ classNames( {
 							post__likes: true,
-							"is-empty": ! likeCountDisplay
+							'is-empty': ! likeCountDisplay
 						} ) }
 						target="_blank"
 						title={ likeTitle }
@@ -327,31 +315,27 @@ module.exports = React.createClass({
 
 		if ( metaItems.length ) {
 			footerMetaItems = metaItems.map( function( item, i ) {
-				var itemKey = 'meta-' + postId + '-' + i;
-				return ( <li key={ itemKey }>{ item }</li> );
+				const itemKey = 'meta-' + postId + '-' + i;
+				return ( <li key={ itemKey }><span>{ item }</span></li> );
 			}, this );
 
 			return ( <ul className="post__meta">{ footerMetaItems }</ul> );
 		}
 	},
 
-	getContentLinkURL: function() {
-		var post = this.props.post,
-			site = this.getSite(),
-			contentLinkURL;
+	getContentLinkURL() {
+		const post = this.props.post;
+		const site = this.getSite();
 
 		if ( utils.userCan( 'edit_post', post ) ) {
-			contentLinkURL = utils.getEditURL( post, site );
+			return utils.getEditURL( post, site );
 		} else if ( post.status === 'trash' ) {
-			contentLinkURL = null;
-		} else {
-			contentLinkURL = post.URL;
+			return null;
 		}
-
-		return contentLinkURL;
+		return post.URL;
 	},
 
-	getContentLinkTarget: function() {
+	getContentLinkTarget() {
 		if ( utils.userCan( 'edit_post', this.props.post ) ) {
 			return null;
 		}
@@ -359,26 +343,25 @@ module.exports = React.createClass({
 		return '_blank';
 	},
 
-	toggleMoreControls: function( visibility ) {
+	toggleMoreControls( visibility ) {
 		this.setState( {
 			showMoreOptions: ( visibility === 'show' )
 		} );
 	},
 
-	getSite: function() {
+	getSite() {
 		return this.props.sites.getSite( this.props.post.site_ID );
 	},
 
-	toggleComments: function() {
+	toggleComments() {
 		this.setState( {
 			showComments: ! this.state.showComments
 		} );
 		this.analyticsEvents.commentIconClick();
 	},
 
-	render: function() {
-
-		var site = this.getSite();
+	render() {
+		const site = this.getSite();
 
 		return (
 			<Card tagName="article" className={ this.getPostClass() }>
@@ -404,6 +387,7 @@ module.exports = React.createClass({
 					onTrash={ this.trashPost }
 					onDelete={ this.deletePost }
 					onRestore={ this.restorePost }
+					site={ site }
 				/>
 				<ReactCSSTransitionGroup
 					transitionName="updated-trans"
@@ -414,7 +398,6 @@ module.exports = React.createClass({
 				{ this.state.showComments && <Comments post={ this.props.post } onCommentsUpdate={ () => {} } /> }
 			</Card>
 		);
-
 	}
 
-});
+} );

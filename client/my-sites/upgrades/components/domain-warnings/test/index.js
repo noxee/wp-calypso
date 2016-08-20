@@ -11,28 +11,29 @@ import TestUtils from 'react-addons-test-utils';
 /**
  * Internal dependencies
  */
-import i18n from 'lib/mixins/i18n';
 import Notice from 'components/notice';
 import { type as domainTypes } from 'lib/domains/constants';
 import useFakeDom from 'test/helpers/use-fake-dom';
+import useMockery from 'test/helpers/use-mockery';
 
 describe( 'index', () => {
-	let DomainWarnings, translateFn;
+	let DomainWarnings;
 
 	useFakeDom();
 
-	beforeEach( () => {
-		translateFn = i18n.translate;
-		i18n.translate = identity;
+	useMockery( mockery => {
+		mockery.registerMock( 'lib/analytics', {} );
 		DomainWarnings = require( '../' );
-		DomainWarnings.prototype.__reactAutoBindMap.translate = identity;
-		Notice.prototype.__reactAutoBindMap.translate = identity;
+	} );
+
+	beforeEach( () => {
+		DomainWarnings.prototype.translate = identity;
+		Notice.prototype.translate = identity;
 	} );
 
 	afterEach( () => {
-		delete DomainWarnings.prototype.__reactAutoBindMap.translate;
-		delete Notice.prototype.__reactAutoBindMap.translate;
-		i18n.translate = translateFn;
+		delete DomainWarnings.prototype.translate;
+		delete Notice.prototype.translate;
 	} );
 
 	it( 'should not render anything if there\'s no need', () => {
@@ -45,7 +46,7 @@ describe( 'index', () => {
 
 		const component = TestUtils.renderIntoDocument( <DomainWarnings { ...props } /> );
 
-		expect( ReactDom.findDOMNode( component ) ).to.be.a( 'null' )
+		expect( ReactDom.findDOMNode( component ) ).to.be.a( 'null' );
 	} );
 
 	it( 'should render new warning notice if the domain is new', () => {
@@ -53,7 +54,8 @@ describe( 'index', () => {
 			domain: {
 				name: 'example.com',
 				registrationMoment: moment(),
-				type: domainTypes.REGISTERED
+				type: domainTypes.REGISTERED,
+				currentUserCanManage: true
 			},
 			selectedSite: { domain: 'example.wordpress.com' }
 		};
@@ -68,7 +70,8 @@ describe( 'index', () => {
 			domain: {
 				name: 'example.com',
 				registrationMoment: moment(),
-				type: domainTypes.REGISTERED
+				type: domainTypes.REGISTERED,
+				currentUserCanManage: true
 			},
 			selectedSite: { domain: 'example.com' }
 		};
@@ -81,8 +84,8 @@ describe( 'index', () => {
 	it( 'should render the multi version of the component if more than two domains match the same rule', () => {
 		const props = {
 			domains: [
-				{ name: '1.com', registrationMoment: moment(), type: domainTypes.REGISTERED },
-				{ name: '2.com', registrationMoment: moment(), type: domainTypes.REGISTERED }
+				{ name: '1.com', registrationMoment: moment(), type: domainTypes.REGISTERED, currentUserCanManage: true },
+				{ name: '2.com', registrationMoment: moment(), type: domainTypes.REGISTERED, currentUserCanManage: true },
 			],
 			selectedSite: { domain: 'example.com' }
 		};

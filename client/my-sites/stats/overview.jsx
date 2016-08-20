@@ -13,6 +13,7 @@ import SiteOverviewPlaceholder from './stats-overview-placeholder';
 import DatePicker from './stats-date-picker';
 import StatsNavigation from './stats-navigation';
 import Main from 'components/main';
+import StatsFirstView from './stats-first-view';
 
 export default React.createClass( {
 	displayName: 'StatsOverview',
@@ -20,17 +21,16 @@ export default React.createClass( {
 	mixins: [ observe( 'sites' ) ],
 
 	propTypes: {
-		statSummaryList: PropTypes.object,
 		path: PropTypes.string
 	},
 
 	render() {
-		const { statSummaryList, path } = this.props;
+		const { path, period } = this.props;
 		const sites = this.props.sites.getVisible();
 		const statsPath = ( path === '/stats' ) ? '/stats/day' : path;
 
 		const sitesSorted = sites.map( function( site ) {
-			var momentSiteZone = this.moment();
+			let momentSiteZone = this.moment();
 
 			if ( 'object' === typeof ( site.options ) && 'undefined' !== typeof ( site.options.gmt_offset ) ) {
 				momentSiteZone = this.moment().utcOffset( site.options.gmt_offset );
@@ -70,14 +70,21 @@ export default React.createClass( {
 			}
 
 			const date = this.moment().utcOffset( siteOffset ).format( 'YYYY-MM-DD' );
-			const summaryData = statSummaryList.get( site.ID, date );
 
 			if ( 0 === index || sitesSorted[ index - 1 ].periodEnd !== site.periodEnd ) {
-				overview.push( <DatePicker period={ this.props.period } date={ date } /> );
+				overview.push( <DatePicker period={ period } date={ date } /> );
 			}
 
 			overview.push(
-				<SiteOverview key={ site.ID } site={ site } summaryData={ summaryData } path={ statsPath } />
+				<SiteOverview
+					key={ site.ID }
+					siteId={ site.ID }
+					period={ period }
+					date={ date }
+					path={ statsPath }
+					title={ site.title }
+					siteSlug={ site.slug }
+				/>
 			);
 
 			return overview;
@@ -85,6 +92,7 @@ export default React.createClass( {
 
 		return (
 			<Main>
+				<StatsFirstView />
 				<SidebarNavigation />
 				<StatsNavigation section={ this.props.period } />
 				{ sites.length !== 0 ? sitesList : this.placeholders() }
@@ -96,7 +104,8 @@ export default React.createClass( {
 		const items = [];
 		const limit = Math.min( this.props.user.get().visible_site_count, 10 );
 
-		items.push( <h3 className="stats-section-title">&nbsp;</h3> );
+		// TODO: a separate StatsSectionTitle component should be created
+		items.push( <h3 className="stats-section-title">&nbsp;</h3> ); // eslint-disable-line wpcalypso/jsx-classname-namespace
 
 		for ( let i = 0; i < limit; i++ ) {
 			items.push( <SiteOverviewPlaceholder key={ i } /> );

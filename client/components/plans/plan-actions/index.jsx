@@ -11,7 +11,7 @@ import React from 'react';
 import analytics from 'lib/analytics';
 import { cartItems } from 'lib/cart-values';
 import config from 'config';
-import { isBusiness, isEnterprise, isFreePlan } from 'lib/products-values';
+import { isBusiness, isEnterprise, isFreePlan, isFreeJetpackPlan } from 'lib/products-values';
 import purchasesPaths from 'me/purchases/paths';
 import { isValidFeatureKey } from 'lib/plans';
 import * as upgradesActions from 'lib/upgrades/actions';
@@ -73,7 +73,19 @@ const PlanActions = React.createClass( {
 				<button className="button is-primary plan-actions__upgrade-button"
 					disabled={ this.props.isSubmitting }
 					onClick={ this.handleSelectPlan }>
-					{ this.translate( 'Select Free Plan' ) }
+					{ this.translate( 'Select Free' ) }
+				</button>
+			</div>
+		);
+	},
+
+	freeJetpackPlanButton() {
+		return (
+			<div>
+				<button className="button is-primary plan-actions__upgrade-button"
+					disabled={ this.props.isSubmitting }
+					onClick={ this.handleSelectJetpackFreePlan }>
+					{ this.translate( 'Select Free' ) }
 				</button>
 			</div>
 		);
@@ -82,6 +94,10 @@ const PlanActions = React.createClass( {
 	upgradeActions() {
 		if ( isFreePlan( this.props.plan ) ) {
 			return this.freePlanButton();
+		}
+
+		if ( isFreeJetpackPlan( this.props.plan ) ) {
+			return this.freeJetpackPlanButton();
 		}
 
 		if ( ! config.isEnabled( 'upgrades/checkout' ) ) {
@@ -118,6 +134,14 @@ const PlanActions = React.createClass( {
 		return cartItems.getItemForPlan( this.props.plan, properties );
 	},
 
+	handleSelectJetpackFreePlan( event ) {
+		event.preventDefault();
+
+		if ( this.props.onSelectFreeJetpackPlan ) {
+			return this.props.onSelectFreeJetpackPlan();
+		}
+	},
+
 	handleSelectPlan( event ) {
 		event.preventDefault();
 
@@ -142,6 +166,11 @@ const PlanActions = React.createClass( {
 		if ( this.props.onSelectPlan ) {
 			return this.props.onSelectPlan( cartItem );
 		}
+
+		if ( ! cartItem ) {
+			return;
+		}
+
 		upgradesActions.addItem( cartItem );
 
 		const checkoutPath = this.props.selectedFeature && isValidFeatureKey( this.props.selectedFeature )
@@ -192,11 +221,13 @@ const PlanActions = React.createClass( {
 	},
 
 	managePlanButton() {
-		if ( this.planHasCost() ) {
+		if ( this.planHasCost() && this.props.sitePlan.userIsOwner ) {
 			const link = purchasesPaths.managePurchase( this.props.site.slug, this.props.sitePlan.id );
 
 			return (
-				<a href={ link } className="button plan-actions__upgrade-button">{ this.translate( 'Manage Plan', { context: 'Link to current plan from /plans/' } ) }</a>
+				<a href={ link } className="button plan-actions__upgrade-button">
+					{ this.translate( 'Manage Plan', { context: 'Link to current plan from /plans/' } ) }
+				</a>
 			);
 		}
 	},
@@ -204,7 +235,9 @@ const PlanActions = React.createClass( {
 	freePlanExpiration() {
 		if ( ! this.planHasCost() ) {
 			return (
-				<span className="plan-actions__plan-expiration">{ this.translate( 'Never expires', { context: 'Expiration info for free plan in /plans/' } ) }</span>
+				<span className="plan-actions__plan-expiration">
+					{ this.translate( 'Never expires', { context: 'Expiration info for free plan in /plans/' } ) }
+				</span>
 			);
 		}
 	},
@@ -236,7 +269,11 @@ const PlanActions = React.createClass( {
 			return this.placeholder();
 		}
 
-		if ( ! this.props.isInSignup && this.props.site && isEnterprise( this.props.site.plan ) ) {
+		if (
+			! this.props.isInSignup &&
+			this.props.site &&
+			isEnterprise( this.props.site.plan )
+		) {
 			return this.downgradeMessage();
 		}
 

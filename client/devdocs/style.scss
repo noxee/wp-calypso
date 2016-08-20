@@ -13,7 +13,7 @@
 	}
 }
 
-.is-section-devdocs-start .wp-primary {
+.is-section-devdocs-start .layout__primary {
 	margin-left: 0;
 }
 
@@ -140,16 +140,45 @@
 	margin-top: 48px;
 }
 
+.design-assets {
+	@include breakpoint( "<660px" ) {
+		padding: 0 6px;
+	}
+}
+
+.design-assets__group > h2,
+.docs__design-assets-group > h2,
+.design-assets__group > h2 a:first-child,
+.docs__design-assets-group > h2 a:first-child {
+	color: $gray-dark;
+	font-family: $serif;
+	font-size: 38px;
+	font-weight: bold;
+	margin: 40px 0 15px;
+}
+.design-assets h3, .design-assets h4 {
+	font-weight: bold;
+	margin-bottom: 8px;
+}
+
 .design-assets__toggle {
 	float: right;
 }
 
-.design-assets__group {
+.design-assets__group,
+.docs__design-assets-group {
 	color: $gray-dark;
 }
 
+.design-assets__group .docs-example,
+.docs__design-assets-group .docs-example {
+	margin-top: 40px;
+}
+
 .design-assets__group > .gridicon:hover,
-.design-assets__group > .social-logo:hover {
+.design-assets__group > .social-logo:hover,
+.docs__design-assets-group > .gridicon:hover,
+.docs__design-assets-group > .social-logo:hover {
 	fill: $gray;
 	cursor: pointer;
 }

@@ -2,32 +2,16 @@
  * Internal dependencies
  */
 import config from 'config';
-import { makeLoggedOutLayout } from 'controller';
-import { details, fetchThemeDetailsData } from './controller';
-
-// FIXME: These routes will SSR the logged-out Layout even if logged-in.
-// While subsequently replaced by the logged-in Layout on the client-side,
-// we'll want to render it on the server, too.
+import { makeLayout } from 'controller';
 
 // `logged-out` middleware isn't SSR-compliant yet, but we can at least render
 // the layout.
 // FIXME: Also create loggedOut/multiSite/singleSite elements, depending on route.
-const designRoutes = {
-	'/design': [ makeLoggedOutLayout ],
-	'/design/type/:tier': [ makeLoggedOutLayout ]
-};
-
-const themesRoutes = {
-	'/theme/:slug/:section?/:site_id?': [ fetchThemeDetailsData, details, makeLoggedOutLayout ]
-};
-
-const routes = Object.assign( {},
-	config.isEnabled( 'manage/themes' ) ? designRoutes : {},
-	config.isEnabled( 'manage/themes/details' ) ? themesRoutes : {}
-);
 
 export default function( router ) {
-	Object.keys( routes ).forEach( route => {
-		router( route, ...routes[ route ] );
-	} )
-};
+	if ( config.isEnabled( 'manage/themes' ) ) {
+		router( '/design/:tier(free|premium)?', makeLayout );
+		router( '/design/:tier(free|premium)?/filter/:filter', makeLayout );
+		router( '/design/*', makeLayout ); // Needed so direct hits don't result in a 404.
+	}
+}

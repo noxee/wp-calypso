@@ -12,6 +12,7 @@ import noop from 'lodash/noop';
  */
 import page from 'page';
 import LayoutLoggedOut from 'layout/logged-out';
+import { getCurrentUser } from 'state/current-user/selectors';
 import debugFactory from 'debug';
 
 const debug = debugFactory( 'calypso:controller' );
@@ -19,21 +20,32 @@ const debug = debugFactory( 'calypso:controller' );
 /**
  * @param { object } context -- Middleware context
  * @param { function } next -- Call next middleware in chain
- *
- * Produce a `LayoutLoggedOut` element in `context.layout`, using
- * `context.primary`, `context.secondary`, and `context.tertiary` to populate it.
 */
-export function makeLoggedOutLayout( context, next ) {
+export function makeLayout( context, next ) {
+	const isLoggedIn = !! getCurrentUser( context.store.getState() );
+	if ( ! isLoggedIn ) {
+		context.layout = makeLoggedOutLayout( context );
+	} // TODO: else { makeLoggedInLayout( context ); }
+	next();
+}
+
+/**
+ * @param { object } context -- Middleware context
+ * @returns { object } `LoggedOutLayout` element
+ *
+ * Return a `LayoutLoggedOut` element, using `context.primary`,
+ * `context.secondary`, and `context.tertiary` to populate it.
+*/
+function makeLoggedOutLayout( context ) {
 	const { store, primary, secondary, tertiary } = context;
-	context.layout = (
+	return (
 		<ReduxProvider store={ store }>
 			<LayoutLoggedOut primary={ primary }
 				secondary={ secondary }
 				tertiary={ tertiary } />
 		</ReduxProvider>
 	);
-	next();
-};
+}
 
 /**
  * Isomorphic routing helper, client side
@@ -50,7 +62,7 @@ export function makeLoggedOutLayout( context, next ) {
  * divs.
  */
 export function clientRouter( route, ...middlewares ) {
-	page( route, ...[ ...middlewares, render ] );
+	page( route, ...middlewares, render );
 }
 
 export function setSection( section ) {
@@ -58,7 +70,7 @@ export function setSection( section ) {
 		context.store.dispatch( setSectionAction( section ) );
 
 		next();
-	}
+	};
 }
 
 function render( context ) {
@@ -80,25 +92,31 @@ function renderSeparateTrees( context ) {
 }
 
 function renderPrimary( context ) {
-	const { primary } = context;
+	const { primary, store } = context;
 
 	if ( primary ) {
 		debug( 'Rendering primary', primary );
 		ReactDom.render(
-			primary,
+			<ReduxProvider store={ store }>
+				{ primary }
+			</ReduxProvider>,
 			document.getElementById( 'primary' )
 		);
 	}
 }
 
 function renderSecondary( context ) {
-	if ( context.secondary === null ) {
+	const { secondary, store } = context;
+
+	if ( secondary === null ) {
 		debug( 'Unmounting secondary' );
 		ReactDom.unmountComponentAtNode( document.getElementById( 'secondary' ) );
-	} else if ( context.secondary !== undefined ) {
+	} else if ( secondary !== undefined ) {
 		debug( 'Rendering secondary' );
 		ReactDom.render(
-			context.secondary,
+			<ReduxProvider store={ store }>
+				{ secondary }
+			</ReduxProvider>,
 			document.getElementById( 'secondary' )
 		);
 	}

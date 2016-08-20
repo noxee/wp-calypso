@@ -2,25 +2,21 @@
  * External dependencies
  */
 import React, { PropTypes } from 'react';
-import partialRight from 'lodash/partialRight';
 import page from 'page';
 
 /**
  * Internal dependencies
  */
-import Helper from './helpers';
+import { trackClick } from './helpers';
 import ThemesSearchCard from './themes-search-card';
 import ThemesData from 'components/data/themes-list-fetcher';
 import ThemesList from 'components/themes-list';
 import StickyPanel from 'components/sticky-panel';
 import analytics from 'lib/analytics';
 import buildUrl from 'lib/mixins/url-search/build-url';
-import urlSearch from 'lib/mixins/url-search';
-import config from 'config';
+import { getFilterFromTerm, filterIsValid } from './theme-filters.js';
 
 const ThemesSelection = React.createClass( {
-	mixins: [ urlSearch ],
-
 	propTypes: {
 		selectedSite: PropTypes.oneOfType( [
 			PropTypes.object,
@@ -28,17 +24,47 @@ const ThemesSelection = React.createClass( {
 		] ).isRequired,
 		siteId: PropTypes.string,
 		search: PropTypes.string,
-		onScreenshotClick: PropTypes.func.isRequired,
+		onScreenshotClick: PropTypes.func,
 		getOptions: React.PropTypes.func,
 		queryParams: PropTypes.object.isRequired,
 		themesList: PropTypes.array.isRequired,
-		getActionLabel: React.PropTypes.func
+		getActionLabel: React.PropTypes.func,
+		tier: React.PropTypes.string,
 	},
 
-	getInitialState: function() {
-		return {
-			tier: this.props.tier || ( config.isEnabled( 'upgrades/premium-themes' ) ? 'all' : 'free' )
-		};
+	getDefaultProps() {
+		return { search: '' };
+	},
+
+	doSearch( searchBoxContent ) {
+		const filterRegex = /(\w+)\:\s*([\w-]+)/g;
+		const KEY = 1;
+		const VALUE = 2;
+
+		let matches;
+		const validFilters = [];
+		while ( ( matches = filterRegex.exec( searchBoxContent ) ) !== null ) {
+			const value = matches[ VALUE ];
+			const key = matches[ KEY ];
+			if ( key && value && filterIsValid( key, value ) ) {
+				validFilters.push( value );
+			}
+		}
+		validFilters.sort();
+		const filter = validFilters.join( ',' );
+
+		const searchString = searchBoxContent.replace( filterRegex, '' ).trim();
+		this.updateUrl( this.props.tier || 'all', filter, searchString );
+	},
+
+	prependFilterKeys() {
+		const { filter } = this.props;
+		if ( filter ) {
+			return filter.split( ',' ).map(
+				value => getFilterFromTerm( value )
+			).join( ' ' ) + ' ';
+		}
+		return '';
 	},
 
 	onMoreButtonClick( theme, resultsRank ) {
@@ -67,19 +93,25 @@ const ThemesSelection = React.createClass( {
 	},
 
 	onTierSelect( { value: tier } ) {
+		trackClick( 'search bar filter', tier );
+		this.updateUrl( tier, this.props.filter );
+	},
+
+	updateUrl( tier, filter, searchString = this.props.search ) {
 		const siteId = this.props.siteId ? `/${this.props.siteId}` : '';
-		const url = `/design/type/${tier}${siteId}`;
-		this.setState( { tier } );
-		Helper.trackClick( 'search bar filter', tier );
-		page( buildUrl( url, this.props.search ) );
+		const tierSection = tier === 'all' ? '' : `/${ tier }`;
+		const filterSection = filter ? `/filter/${ filter }` : '';
+		const url = `/design${ tierSection }${ filterSection }${siteId}`;
+
+		page( buildUrl( url, searchString ) );
 	},
 
 	onScreenshotClick( theme, resultsRank ) {
-		Helper.trackClick( 'theme', 'screenshot' );
+		trackClick( 'theme', 'screenshot' );
 		if ( ! theme.active ) {
 			this.recordSearchResultsClick( theme, resultsRank );
 		}
-		this.props.onScreenshotClick( theme );
+		this.props.onScreenshotClick && this.props.onScreenshotClick( theme );
 	},
 
 	render() {
@@ -91,21 +123,22 @@ const ThemesSelection = React.createClass( {
 					<ThemesSearchCard
 							site={ site }
 							onSearch={ this.doSearch }
-							search={ this.props.search }
-							tier={ this.state.tier }
+							search={ this.prependFilterKeys() + this.props.search }
+							tier={ this.props.tier }
 							select={ this.onTierSelect } />
 				</StickyPanel>
 				<ThemesData
 						site={ site }
 						isMultisite={ ! this.props.siteId } // Not the same as `! site` !
 						search={ this.props.search }
-						tier={ this.state.tier }
+						tier={ this.props.tier }
+						filter={ this.props.filter }
 						onRealScroll={ this.trackScrollPage }
 						onLastPage={ this.trackLastPage } >
 					<ThemesList getButtonOptions={ this.props.getOptions }
 						onMoreButtonClick={ this.onMoreButtonClick }
 						onScreenshotClick={ this.onScreenshotClick }
-						getScreenshotUrl={ site ? partialRight( Helper.getPreviewUrl, site ) : null }
+						getScreenshotUrl={ this.props.getScreenshotUrl }
 						getActionLabel={ this.props.getActionLabel } />
 				</ThemesData>
 			</div>

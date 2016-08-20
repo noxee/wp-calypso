@@ -1,7 +1,8 @@
 /**
  * External dependencies
  */
-var debug = require( 'debug' )( 'calypso:site:jetpack' );
+var debug = require( 'debug' )( 'calypso:site:jetpack' ),
+	i18n = require( 'i18n-calypso' );
 
 /**
  * Internal dependencies
@@ -10,7 +11,6 @@ var wpcom = require( 'lib/wp' ),
 	Site = require( 'lib/site' ),
 	inherits = require( 'inherits' ),
 	notices = require( 'notices' ),
-	i18n = require( 'lib/mixins/i18n' ),
 	versionCompare = require( 'lib/version-compare' ),
 	SiteUtils = require( 'lib/site/utils' ),
 	config = require( 'config' );
@@ -68,10 +68,6 @@ JetpackSite.prototype.fetchAvailableUpdates = function() {
 	wpcom.undocumented().getAvailableUpdates( this.ID, function( error, data ) {
 		if ( error ) {
 			debug( 'error fetching Updates data from api', error );
-			// 403 is returned when the user does not have manage capabilities.
-			if ( 403 !== error.statusCode && ! ( this.update instanceof Object ) ) {
-				this.set( { update: 'error', unreachable: true } );
-			}
 			return;
 		}
 		this.set( { update: data } );
@@ -248,7 +244,7 @@ JetpackSite.prototype.deactivateModule = function( moduleId, callback ) {
 JetpackSite.prototype.toggleModule = function( moduleId, callback ) {
 	const isActive = this.isModuleActive( moduleId ),
 		method = isActive ? 'jetpackModulesDeactivate' : 'jetpackModulesActivate',
-		prevActiveModules = Object.assign( {}, this.modules );
+		prevActiveModules = [ ...this.modules ];
 
 	if ( isActive ) {
 		this.modules = this.modules.filter( module => module !== moduleId );

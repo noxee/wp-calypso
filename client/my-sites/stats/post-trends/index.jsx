@@ -2,27 +2,32 @@
  * External dependencies
  */
 import React, { PropTypes } from 'react';
+import { connect } from 'react-redux';
 import classNames from 'classnames';
 import throttle from 'lodash/throttle';
-import touchDetect from 'lib/touch-detect';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
-import observe from 'lib/mixins/data-observe';
-import i18n from 'lib/mixins/i18n';
 import Month from './month';
 import Card from 'components/card';
 import SectionHeader from 'components/section-header';
+import QuerySiteStats from 'components/data/query-site-stats';
+import { getSelectedSiteId } from 'state/ui/selectors';
+import {
+	isRequestingSiteStatsForQuery,
+	getSiteStatsPostStreakData,
+	getSiteStatsMaxPostsByDay
+} from 'state/stats/lists/selectors';
 
-export default React.createClass( {
+const PostTrends = React.createClass( {
 
 	displayName: 'PostTrends',
 
-	mixins: [ observe( 'streakList' ) ],
-
 	propTypes: {
-		streakList: PropTypes.object.isRequired
+		siteId: PropTypes.number,
+		query: PropTypes.object
 	},
 
 	getInitialState: function() {
@@ -111,7 +116,14 @@ export default React.createClass( {
 
 		for ( i = 11; i >= 0; i-- ) {
 			startDate = i18n.moment().subtract( i, 'months' ).startOf( 'month' );
-			months.push( <Month key={ startDate.format( 'YYYYMM' ) } startDate={ startDate } data={ this.props.streakList } /> );
+			months.push(
+				<Month
+					key={ startDate.format( 'YYYYMM' ) }
+					startDate={ startDate }
+					streakData={ this.props.streakData }
+					max={ this.props.max }
+				/>
+			);
 		}
 
 		return months;
@@ -122,6 +134,8 @@ export default React.createClass( {
 			rightClass,
 			containerClass;
 
+		const { siteId, query, requesting } = this.props;
+
 		leftClass = classNames( 'post-trends__scroll-left', {
 			'is-active': this.state.canScrollLeft
 		} );
@@ -131,16 +145,13 @@ export default React.createClass( {
 		} );
 
 		containerClass = classNames( 'post-trends', {
-			'is-loading': this.props.streakList.isLoading()
+			'is-loading': requesting
 		} );
-
-		if ( touchDetect.hasTouch() ) {
-			return null;
-		}
 
 		return (
 
 			<div className={ containerClass }>
+				{ siteId && <QuerySiteStats siteId={ siteId } statType="statsStreak" query={ query } /> }
 				<SectionHeader label={ this.translate( 'Posting Activity' ) }></SectionHeader>
 				<Card>
 					<div className={ leftClass } onClick={ this.scrollLeft }><span className="left-arrow"></span></div>
@@ -166,3 +177,20 @@ export default React.createClass( {
 		);
 	}
 } );
+
+export default connect( ( state ) => {
+	const siteId = getSelectedSiteId( state );
+	const query = {
+		startDate: i18n.moment().locale( 'en' ).subtract( 1, 'year' ).startOf( 'month' ).format( 'YYYY-MM-DD' ),
+		endDate: i18n.moment().locale( 'en' ).endOf( 'month' ).format( 'YYYY-MM-DD' ),
+		max: 3000
+	};
+
+	return {
+		requesting: isRequestingSiteStatsForQuery( state, siteId, 'statsStreak', query ),
+		streakData: getSiteStatsPostStreakData( state, siteId, query ),
+		max: getSiteStatsMaxPostsByDay( state, siteId, query ),
+		query,
+		siteId
+	};
+} )( PostTrends );

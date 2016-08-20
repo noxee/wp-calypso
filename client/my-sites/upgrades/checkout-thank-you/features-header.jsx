@@ -3,15 +3,16 @@
  */
 import React from 'react';
 import classNames from 'classnames';
+import i18n from 'i18n-calypso';
 
 /**
  * Internal dependencies
  */
-import i18n from 'lib/mixins/i18n';
 import {
 	isDomainMapping,
 	isDomainRegistration,
-	isGoogleApps
+	isGoogleApps,
+	isGuidedTransfer,
 } from 'lib/products-values';
 
 const FeaturesHeader = ( { isDataLoaded, isGenericReceipt, purchases } ) => {
@@ -29,7 +30,8 @@ const FeaturesHeader = ( { isDataLoaded, isGenericReceipt, purchases } ) => {
 
 	const shouldHideFeaturesHeading = purchases.some( isGoogleApps ) ||
 		purchases.some( isDomainRegistration ) ||
-		purchases.some( isDomainMapping );
+		purchases.some( isDomainMapping ) ||
+		purchases.some( isGuidedTransfer );
 
 	if ( shouldHideFeaturesHeading ) {
 		return <div />;

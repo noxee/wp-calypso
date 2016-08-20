@@ -2,24 +2,24 @@
  * External dependencies
  */
 import { combineReducers } from 'redux';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import omit from 'lodash/omit';
-import omitBy from 'lodash/omitBy';
-import isEqual from 'lodash/isEqual';
-import reduce from 'lodash/reduce';
-import keyBy from 'lodash/keyBy';
-import merge from 'lodash/merge';
+import { get, set, omit, omitBy, isEqual, reduce, merge, findKey, mapValues } from 'lodash';
 
 /**
  * Internal dependencies
  */
+import PostQueryManager from 'lib/query-manager/post';
 import {
+	POST_DELETE,
+	POST_DELETE_SUCCESS,
+	POST_DELETE_FAILURE,
 	POST_EDIT,
 	POST_EDITS_RESET,
 	POST_REQUEST,
 	POST_REQUEST_SUCCESS,
 	POST_REQUEST_FAILURE,
+	POST_RESTORE,
+	POST_RESTORE_FAILURE,
+	POST_SAVE,
 	POSTS_RECEIVE,
 	POSTS_REQUEST,
 	POSTS_REQUEST_SUCCESS,
@@ -30,11 +30,11 @@ import {
 import counts from './counts/reducer';
 import {
 	getSerializedPostsQuery,
-	getSerializedPostsQueryWithoutPage
+	mergeIgnoringArrays,
+	normalizePostForState
 } from './utils';
-import { DEFAULT_POST_QUERY } from './constants';
+import { createReducer, isValidStateWithSchema } from 'state/utils';
 import { itemsSchema, queriesSchema } from './schema';
-import { isValidStateWithSchema } from 'state/utils';
 
 /**
  * Tracks all known post objects, indexed by post global ID.
@@ -43,20 +43,36 @@ import { isValidStateWithSchema } from 'state/utils';
  * @param  {Object} action Action payload
  * @return {Object}        Updated state
  */
-export function items( state = {}, action ) {
-	switch ( action.type ) {
-		case POSTS_RECEIVE:
-			return Object.assign( {}, state, keyBy( action.posts, 'global_ID' ) );
-		case SERIALIZE:
-			return state;
-		case DESERIALIZE:
-			if ( isValidStateWithSchema( state, itemsSchema ) ) {
-				return state;
+export const items = createReducer( {}, {
+	[ POSTS_RECEIVE ]: ( state, action ) => {
+		return reduce( action.posts, ( memo, post ) => {
+			const { site_ID: siteId, ID: postId, global_ID: globalId } = post;
+			if ( memo[ globalId ] ) {
+				// We're making an assumption here that the site ID and post ID
+				// corresponding with a global ID will never change
+				return memo;
 			}
-			return {};
+
+			if ( memo === state ) {
+				memo = { ...memo };
+			}
+
+			memo[ globalId ] = [ siteId, postId ];
+			return memo;
+		}, state );
+	},
+	[ POST_DELETE_SUCCESS ]: ( state, action ) => {
+		const globalId = findKey( state, ( [ siteId, postId ] ) => {
+			return siteId === action.siteId && postId === action.postId;
+		} );
+
+		if ( ! globalId ) {
+			return state;
+		}
+
+		return omit( state, globalId );
 	}
-	return state;
-}
+}, itemsSchema );
 
 /**
  * Returns the updated site post requests state after an action has been
@@ -122,51 +138,96 @@ export function queryRequests( state = {}, action ) {
  * @param  {Object} action Action payload
  * @return {Object}        Updated state
  */
-export function queries( state = {}, action ) {
-	switch ( action.type ) {
-		case POSTS_REQUEST_SUCCESS:
-			const serializedQuery = getSerializedPostsQuery( action.query, action.siteId );
-			return Object.assign( {}, state, {
-				[ serializedQuery ]: action.posts.map( ( post ) => post.global_ID )
-			} );
-
-		case DESERIALIZE:
-			if ( isValidStateWithSchema( state, queriesSchema ) ) {
+export const queries = ( () => {
+	function applyToManager( state, siteId, method, createDefault, ...args ) {
+		if ( ! state[ siteId ] ) {
+			if ( ! createDefault ) {
 				return state;
 			}
 
-			return {};
+			return {
+				...state,
+				[ siteId ]: ( new PostQueryManager() )[ method ]( ...args )
+			};
+		}
+
+		const nextManager = state[ siteId ][ method ]( ...args );
+		if ( nextManager === state[ siteId ] ) {
+			return state;
+		}
+
+		return {
+			...state,
+			[ siteId ]: nextManager
+		};
 	}
 
-	return state;
-}
+	return createReducer( {}, {
+		[ POST_RESTORE ]: ( state, { siteId, postId } ) => {
+			return applyToManager( state, siteId, 'receive', false, {
+				ID: postId,
+				status: '__RESTORE_PENDING'
+			}, { patch: true } );
+		},
+		[ POST_RESTORE_FAILURE ]: ( state, { siteId, postId } ) => {
+			return applyToManager( state, siteId, 'receive', false, {
+				ID: postId,
+				status: 'trash'
+			}, { patch: true } );
+		},
+		[ POSTS_REQUEST_SUCCESS ]: ( state, { siteId, query, posts, found } ) => {
+			const normalizedPosts = posts.map( normalizePostForState );
+			return applyToManager( state, siteId, 'receive', true, normalizedPosts, { query, found } );
+		},
+		[ POSTS_RECEIVE ]: ( state, { posts } ) => {
+			const postsBySiteId = reduce( posts, ( memo, post ) => {
+				return Object.assign( memo, {
+					[ post.site_ID ]: [
+						...( memo[ post.site_ID ] || [] ),
+						normalizePostForState( post )
+					]
+				} );
+			}, {} );
 
-/**
- * Returns the updated post query last page state after an action has been
- * dispatched. The state reflects a mapping of serialized query to last known
- * page number.
- *
- * @param  {Object} state  Current state
- * @param  {Object} action Action payload
- * @return {Object}        Updated state
- */
-export function queriesLastPage( state = {}, action ) {
-	switch ( action.type ) {
-		case POSTS_REQUEST_SUCCESS:
-			const { siteId, found } = action;
-			const serializedQuery = getSerializedPostsQueryWithoutPage( action.query, siteId );
-			const lastPage = Math.ceil( found / ( action.query.number || DEFAULT_POST_QUERY.number ) );
+			return reduce( postsBySiteId, ( memo, sitePosts, siteId ) => {
+				return applyToManager( memo, siteId, 'receive', true, sitePosts );
+			}, state );
+		},
+		[ POST_SAVE ]: ( state, { siteId, postId, post } ) => {
+			return applyToManager( state, siteId, 'receive', false, {
+				ID: postId,
+				...post
+			}, { patch: true } );
+		},
+		[ POST_DELETE ]: ( state, { siteId, postId } ) => {
+			return applyToManager( state, siteId, 'receive', false, {
+				ID: postId,
+				status: '__DELETE_PENDING'
+			}, { patch: true } );
+		},
+		[ POST_DELETE_FAILURE ]: ( state, { siteId, postId } ) => {
+			return applyToManager( state, siteId, 'receive', false, {
+				ID: postId,
+				status: 'trash'
+			}, { patch: true } );
+		},
+		[ POST_DELETE_SUCCESS ]: ( state, { siteId, postId } ) => {
+			return applyToManager( state, siteId, 'removeItem', false, postId );
+		},
+		[ SERIALIZE ]: ( state ) => {
+			return mapValues( state, ( { data, options } ) => ( { data, options } ) );
+		},
+		[ DESERIALIZE ]: ( state ) => {
+			if ( ! isValidStateWithSchema( state, queriesSchema ) ) {
+				return {};
+			}
 
-			return Object.assign( {}, state, {
-				[ serializedQuery ]: Math.max( lastPage, 1 )
+			return mapValues( state, ( { data, options } ) => {
+				return new PostQueryManager( data, options );
 			} );
-
-		case SERIALIZE:
-		case DESERIALIZE:
-			return {};
-	}
-	return state;
-}
+		}
+	} );
+} )();
 
 /**
  * Returns the updated editor posts state after an action has been dispatched.
@@ -194,7 +255,7 @@ export function edits( state = {}, action ) {
 			}, state );
 
 		case POST_EDIT:
-			return merge( {}, state, {
+			return mergeIgnoringArrays( {}, state, {
 				[ action.siteId ]: {
 					[ action.postId || '' ]: action.post
 				}
@@ -223,6 +284,5 @@ export default combineReducers( {
 	siteRequests,
 	queryRequests,
 	queries,
-	queriesLastPage,
 	edits
 } );

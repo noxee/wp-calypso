@@ -13,6 +13,9 @@ import SummaryChart from '../stats-summary-chart';
 import PostMonths from '../stats-detail-months';
 import PostWeeks from '../stats-detail-weeks';
 import HeaderCake from 'components/header-cake';
+import { decodeEntities } from 'lib/formatting';
+import Main from 'components/main';
+import StatsFirstView from '../stats-first-view';
 
 export default React.createClass( {
 	displayName: 'StatsPostDetail',
@@ -44,7 +47,7 @@ export default React.createClass( {
 
 		if ( postOnRecord ) {
 			if ( typeof post.post_title === 'string' && post.post_title.length ) {
-				title = <Emojify>{ post.post_title }</Emojify>;
+				title = <Emojify>{ decodeEntities( post.post_title ) }</Emojify>;
 			}
 		}
 
@@ -53,7 +56,9 @@ export default React.createClass( {
 		}
 
 		return (
-			<div className="main main-column" role="main">
+			<Main>
+				<StatsFirstView />
+
 				<HeaderCake onClick={ this.goBack }>
 					{ title }
 				</HeaderCake>
@@ -82,7 +87,7 @@ export default React.createClass( {
 					postViewsList={ this.props.postViewsList } />
 
 				<PostWeeks postViewsList={ this.props.postViewsList } />
-			</div>
+			</Main>
 		);
 	}
 } );

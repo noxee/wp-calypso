@@ -1,49 +1,46 @@
 /**
  * External dependencies
  */
-var React = require( 'react' ),
-	noop = require( 'lodash/noop' );
+import React from 'react';
 
 /**
  * Internal dependencies
  */
-var analytics = require( 'lib/analytics' ),
-	SignupActions = require( 'lib/signup/actions' ),
-	ThemesList = require( 'components/themes-list' ),
-	StepWrapper = require( 'signup/step-wrapper' ),
-	Button = require( 'components/button' );
+import analytics from 'lib/analytics';
+import SignupActions from 'lib/signup/actions';
+import SignupThemesList from './signup-themes-list';
+import StepWrapper from 'signup/step-wrapper';
+import ThemePreview from 'my-sites/themes/theme-preview';
+import Button from 'components/button';
+import config from 'config';
+
+const themeDemosEnabled = config.isEnabled( 'signup/theme-demos' );
 
 module.exports = React.createClass( {
 	displayName: 'ThemeSelection',
 
 	propTypes: {
-		themes: React.PropTypes.arrayOf( React.PropTypes.shape( {
-			name: React.PropTypes.string.isRequired,
-			slug: React.PropTypes.string.isRequired
-		} ) ),
 		useHeadstart: React.PropTypes.bool,
+		stepName: React.PropTypes.string.isRequired,
+		goToNextStep: React.PropTypes.func.isRequired,
+		signupDependencies: React.PropTypes.object.isRequired,
 	},
 
-	getDefaultProps: function() {
+	getInitialState() {
 		return {
-			themes: [
-				{ name: 'Dyad', slug: 'dyad' },
-				{ name: 'Independent Publisher', slug: 'independent-publisher' },
-				{ name: 'Sela', slug: 'sela' },
-				{ name: 'Hemingway Rewritten', slug: 'hemingway-rewritten' },
-				{ name: 'Twenty Sixteen', slug: 'twentysixteen' },
-				{ name: 'Penscratch', slug: 'penscratch' },
-				{ name: 'Edin', slug: 'edin' },
-				{ name: 'Publication', slug: 'publication' },
-				{ name: 'Harmonic', slug: 'harmonic' },
-			],
+			previewTheme: {},
+			isPreviewVisible: false,
+		};
+	},
 
+	getDefaultProps() {
+		return {
 			useHeadstart: true,
 		};
 	},
 
-	handleScreenshotClick: function( theme ) {
-		var themeSlug = theme.id;
+	pickTheme( theme ) {
+		const themeSlug = theme.id;
 
 		analytics.tracks.recordEvent( 'calypso_signup_theme_select', { theme: themeSlug, headstart: true } );
 
@@ -58,30 +55,38 @@ module.exports = React.createClass( {
 		this.props.goToNextStep();
 	},
 
-	getThemes() {
-		return this.props.signupDependencies.themes || this.props.themes;
+	showPreview( theme ) {
+		this.setState( {
+			previewTheme: theme,
+			isPreviewVisible: true,
+		} );
 	},
 
-	renderThemesList: function() {
-		var actionLabel = this.translate( 'Pick' ),
-			themes = this.getThemes().map( function( theme ) {
-				return {
-					id: theme.slug,
-					name: theme.name,
-					screenshot: 'https://i1.wp.com/s0.wp.com/wp-content/themes/pub/' + theme.slug + '/screenshot.png?w=660'
-				}
-			} );
-		return (
-			<ThemesList
-				getButtonOptions= { noop }
-				onScreenshotClick= { this.handleScreenshotClick }
-				onMoreButtonClick= { noop }
-				getActionLabel={ function() {
-					return actionLabel;
-				} }
-				{ ...this.props }
-				themes= { themes } />
-		);
+	handleThemePreviewButtonClick() {
+		this.pickTheme( this.state.previewTheme );
+	},
+
+	handleThemePreviewCloseClick() {
+		this.setState( {
+			previewTheme: {},
+			isPreviewVisible: false,
+		} );
+	},
+
+	handleScreenshotClick( theme ) {
+		if ( themeDemosEnabled ) {
+			this.showPreview( theme );
+		} else {
+			this.pickTheme( theme );
+		}
+	},
+
+	renderThemesList() {
+		return ( <SignupThemesList
+			surveyQuestion={ this.props.signupDependencies.surveyQuestion }
+			designType={ this.props.signupDependencies.designType }
+			handleScreenshotClick={ this.handleScreenshotClick }
+		/> );
 	},
 
 	renderJetpackButton() {
@@ -90,14 +95,36 @@ module.exports = React.createClass( {
 		);
 	},
 
-	render: function() {
-		const defaultDependencies = this.props.useHeadstart ? { theme: 'pub/twentyfifteen' } : undefined;
+	renderThemePreview() {
+		return (
+			<ThemePreview
+				showPreview={ this.state.isPreviewVisible }
+				showExternal={ false }
+				theme={ this.state.previewTheme }
+				primaryButtonLabel={ this.translate( 'Pick this Theme' ) }
+				onClose={ this.handleThemePreviewCloseClick }
+				onPrimaryButtonClick={ this.handleThemePreviewButtonClick }>
+			</ThemePreview>
+		);
+	},
+
+	renderStepContent() {
+		return (
+			<div>
+				{ this.renderThemesList() }
+				{ this.renderThemePreview() }
+			</div>
+		);
+	},
+
+	render() {
+		const defaultDependencies = this.props.useHeadstart ? { theme: 'pub/twentysixteen' } : undefined;
 		return (
 			<StepWrapper
 				fallbackHeaderText={ this.translate( 'Choose a theme.' ) }
 				fallbackSubHeaderText={ this.translate( 'No need to overthink it. You can always switch to a different theme later.' ) }
 				subHeaderText={ this.translate( 'Choose a theme. You can always switch to a different theme later.' ) }
-				stepContent={ this.renderThemesList() }
+				stepContent={ this.renderStepContent() }
 				defaultDependencies={ defaultDependencies }
 				headerButton={ this.renderJetpackButton() }
 				{ ...this.props } />

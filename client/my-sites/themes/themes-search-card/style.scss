@@ -12,7 +12,7 @@
 		margin: 0;
 	}
 
-	.section-nav-tabs .noticon {
+	.search .search-open__icon {
 		color: lighten( $gray, 10% );
 	}
 
@@ -23,6 +23,11 @@
 		margin-right: 4px;
 		flex: 0 0 auto;
 		align-self: center;
+	}
+
+	.more {
+		line-height: 18px;
+		padding: 11px 14px 11px;
 	}
 
 	.select-dropdown .select-dropdown__header {

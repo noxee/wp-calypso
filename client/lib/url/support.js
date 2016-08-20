@@ -1,5 +1,4 @@
-const root = 'https://support.wordpress.com',
-	jetpackRoot = 'https://jetpack.me';
+const root = 'https://support.wordpress.com';
 
 export default {
 	ADDING_GOOGLE_APPS_TO_YOUR_SITE: `${root}/add-email/adding-google-apps-to-your-site`,
@@ -12,11 +11,13 @@ export default {
 	CHANGE_NAME_SERVERS_FINDING_OUT_NEW_NS: `${root}/domains/change-name-servers/#finding-out-your-new-name-server`,
 	COMMENTS: `${root}/category/comments`,
 	COMMUNITY_TRANSLATOR: `${root}/community-translator`,
-	CALYPSO_CONTACT: `/help/contact`,
+	COMPLETING_GOOGLE_APPS_SIGNUP: `${root}/adding-google-apps-to-your-site/#completing-sign-up`,
+	CALYPSO_CONTACT: '/help/contact',
 	CUSTOM_DNS: `${root}/domains/custom-dns`,
 	DOMAINS: `${root}/domains`,
 	EMAIL_FORWARDING: `${root}/email-forwarding`,
 	EMAIL_VALIDATION_AND_VERIFICATION: `${root}/domains/register-domain/#email-validation-and-verification`,
+	EMPTY_SITE: `${root}/empty-site/`,
 	ENABLE_DISABLE_COMMENTS: `${root}/enable-disable-comments`,
 	EVENTBRITE: `${root}/eventbrite`,
 	EVENTBRITE_EVENT_CALENDARLISTING_WIDGET: `${root}/widgets/eventbrite-event-calendarlisting-widget`,
@@ -29,10 +30,14 @@ export default {
 	GOOGLE_APPS_LEARNING_CENTER: 'https://apps.google.com/learning-center/',
 	GOOGLE_PLUS_EMBEDS: `${root}/google-plus-embeds`,
 	GRAVATAR_HOVERCARDS: `${root}/gravatar-hovercards`,
+	GUIDED_TRANSFER: `${root}/guided-transfer`,
 	IMPORT: `${root}/import`,
 	INSTAGRAM_WIDGET: `${root}/instagram/instagram-widget`,
-	JETPACK_SUPPORT: `${jetpackRoot}/support/`,
-	JETPACK_CONTACT_SUPPORT: `${jetpackRoot}/contact-support/`,
+	JETPACK_SUPPORT: `${root}/setting-up-premium-services/`,
+	JETPACK_CONTACT_SUPPORT: `${root}/premium-services/`,
+	JETPACK_SERVICE_VAULTPRESS: `${root}/setting-up-premium-services/#vaultpress`,
+	JETPACK_SERVICE_AKISMET: `${root}/setting-up-premium-services/#akismet`,
+	JETPACK_SERVICE_POLLDADDY: `${root}/setting-up-premium-services/#polldaddy`,
 	LIVE_CHAT: `${root}/live-chat`,
 	MANAGE_PURCHASES: `${root}/manage-purchases`,
 	MAP_EXISTING_DOMAIN: `${root}/domains/map-existing-domain`,

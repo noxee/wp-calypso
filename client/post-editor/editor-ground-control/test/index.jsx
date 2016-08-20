@@ -11,7 +11,6 @@ import mockery from 'mockery';
  * Internal dependencies
  */
 import EmptyComponent from 'test/helpers/react/empty-component';
-import useI18n from 'test/helpers/use-i18n';
 import useMockery from 'test/helpers/use-mockery';
 import useFakeDom from 'test/helpers/use-fake-dom';
 
@@ -25,33 +24,43 @@ const MOCK_SITE = {
 	options: {}
 };
 
+const MOCK_USER = {
+	email_verified: true
+};
+
+const MOCK_USER_UTILS = {
+	needsVerificationForSite: function ( site ) { return !MOCK_USER.email_verified; }
+};
+
 describe( 'EditorGroundControl', function() {
 	let shallow, i18n, EditorGroundControl;
 
 	useMockery();
-	useI18n();
 	useFakeDom();
 
 	before( function() {
 		shallow = require( 'enzyme' ).shallow;
-		i18n = require( 'lib/mixins/i18n' );
+		i18n = require( 'i18n-calypso' );
 
 		mockery.registerMock( 'components/card', EmptyComponent );
 		mockery.registerMock( 'components/popover', EmptyComponent );
-		mockery.registerMock( 'my-sites/site', EmptyComponent );
+		mockery.registerMock( 'blocks/site', EmptyComponent );
 		mockery.registerMock( 'post-editor/edit-post-status', EmptyComponent );
 		mockery.registerMock( 'post-editor/editor-status-label', EmptyComponent );
 		mockery.registerMock( 'components/sticky-panel', EmptyComponent );
 		mockery.registerMock( 'components/post-schedule', EmptyComponent );
-		EditorGroundControl = require( '../' ).WrappedComponent;
+		mockery.registerMock( 'lib/user/utils', {
+			needsVerificationForSite: () => !MOCK_USER.email_verified,
+		} );
+		EditorGroundControl = require( '../' );
 
-		EditorGroundControl.prototype.__reactAutoBindMap.translate = i18n.translate;
-		EditorGroundControl.prototype.__reactAutoBindMap.moment = i18n.moment;
+		EditorGroundControl.prototype.translate = i18n.translate;
+		EditorGroundControl.prototype.moment = i18n.moment;
 	} );
 
 	after( function() {
-		delete EditorGroundControl.prototype.__reactAutoBindMap.translate;
-		delete EditorGroundControl.prototype.__reactAutoBindMap.moment;
+		delete EditorGroundControl.prototype.translate;
+		delete EditorGroundControl.prototype.moment;
 	} );
 
 	describe( '#getPreviewLabel()', function() {
@@ -184,6 +193,22 @@ describe( 'EditorGroundControl', function() {
 			expect( tree.getPrimaryButtonLabel() ).to.equal( 'Publish' );
 		} );
 
+		it( 'should return Update if the post was originally published and is scheduled with date in the past', function() {
+			var now = moment(),
+				lastMonth = now.month( now.month() - 1 ).format(),
+				tree;
+
+			tree = shallow(
+				<EditorGroundControl
+					savedPost={ { status: 'publish', date: lastMonth } }
+					post={ { title: 'change', status: 'future', date: lastMonth } }
+					site={ MOCK_SITE }
+				/>
+			).instance();
+
+			expect( tree.getPrimaryButtonLabel() ).to.equal( 'Update' );
+		} );
+
 		it( 'should return Publish if the post is a draft', function() {
 			var tree = shallow(
 				<EditorGroundControl
@@ -286,6 +311,14 @@ describe( 'EditorGroundControl', function() {
 			var tree = shallow( <EditorGroundControl isPublishing={ false } post={ {} } hasContent isDirty isNew /> ).instance();
 
 			expect( tree.isPrimaryButtonEnabled() ).to.be.true;
+		} );
+
+		it( 'should return false if form is not publishing and post is not empty, but user is not verified', function() {
+			MOCK_USER.email_verified = false;
+			let tree = shallow( <EditorGroundControl isPublishing={ false } post={ {} } user={ MOCK_USER } userUtils={ MOCK_USER_UTILS } hasContent isDirty isNew /> ).instance();
+
+			expect( tree.isPrimaryButtonEnabled() ).to.be.false;
+			MOCK_USER.email_verified = true;
 		} );
 
 		it( 'should return true if form is not publishind and post is new and has content, but is not dirty', function() {
@@ -405,6 +438,26 @@ describe( 'EditorGroundControl', function() {
 				<EditorGroundControl
 					savedPost={ { status: 'publish' } }
 					post={ { title: 'change', status: 'draft' } }
+					onSave={ onSave }
+					site={ MOCK_SITE }
+				/>
+			).instance();
+
+			tree.onPrimaryButtonClick();
+
+			expect( onSave ).to.have.been.called;
+		} );
+
+		it( 'should update a published post scheduled in the past', function() {
+			var now = moment( new Date() ),
+				lastMonth = now.month( now.month() - 1 ).format(),
+				onSave = sinon.spy(),
+				tree;
+
+			tree = shallow(
+				<EditorGroundControl
+					savedPost={ { status: 'publish' } }
+					post={ { title: 'change', status: 'future', date: lastMonth } }
 					onSave={ onSave }
 					site={ MOCK_SITE }
 				/>

@@ -1,10 +1,10 @@
 /**
  * External dependencies
  */
-var ReactDom = require( 'react-dom' ),
-	React = require( 'react' ),
+var React = require( 'react' ),
 	wrapWithClickOutside = require( 'react-click-outside' ),
-	noop = require( 'lodash/noop' );
+	noop = require( 'lodash/noop' ),
+	closeOnEsc = require( 'lib/mixins/close-on-esc' );
 
 /**
  * Internal dependencies
@@ -14,6 +14,8 @@ var SiteSelector = require( 'components/site-selector' ),
 
 const SitePicker = React.createClass( {
 	displayName: 'SitePicker',
+
+	mixins: [ closeOnEsc( 'closePicker' ) ],
 
 	propTypes: {
 		onClose: React.PropTypes.func,
@@ -53,8 +55,14 @@ const SitePicker = React.createClass( {
 	},
 
 	onClose: function( event ) {
-		this.props.layoutFocus && this.props.layoutFocus.setNext( 'sidebar' );
-		this.scrollToTop();
+		if ( event.key === 'Escape' ) {
+			this.closePicker();
+		} else {
+			// We use setNext here, because on mobile we want to show sidebar
+			// instead of Stats page after picking a site
+			this.props.layoutFocus.setNext( 'sidebar' );
+			this.scrollToTop();
+		}
 		this.props.onClose( event );
 	},
 
@@ -63,11 +71,15 @@ const SitePicker = React.createClass( {
 		window.scrollTo( 0, 0 );
 	},
 
-	handleClickOutside: function() {
+	closePicker: function() {
 		if ( this.props.layoutFocus && this.props.layoutFocus.getCurrent() === 'sites' ) {
-			this.props.layoutFocus && this.props.layoutFocus.set( 'sidebar' );
+			this.props.layoutFocus.set( 'sidebar' );
 			this.scrollToTop();
 		}
+	},
+
+	handleClickOutside: function() {
+		this.closePicker();
 	},
 
 	render: function() {

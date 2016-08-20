@@ -3,6 +3,7 @@
  */
 var config = require( 'config' ),
 	DesignTypeComponent = require( 'signup/steps/design-type' ),
+	DesignTypeWithStoreComponent = require( 'signup/steps/design-type-with-store' ),
 	DomainsStepComponent = require( 'signup/steps/domains' ),
 	PaidPlansOnly = require( 'signup/steps/paid-plans-only' ),
 	PlansStepComponent = require( 'signup/steps/plans' ),
@@ -13,6 +14,7 @@ var config = require( 'config' ),
 
 module.exports = {
 	'design-type': DesignTypeComponent,
+	'design-type-with-store': DesignTypeWithStoreComponent,
 	domains: DomainsStepComponent,
 	'domains-with-plan': DomainsStepComponent,
 	'domains-only': DomainsStepComponent,

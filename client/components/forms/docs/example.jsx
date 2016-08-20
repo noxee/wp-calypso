@@ -145,6 +145,13 @@ var FormFields = React.createClass( {
 							<option>3</option>
 							<option>4</option>
 						</FormSelect>
+						<FormSelect id="select-disabled" disabled>
+							<option>Disabled</option>
+						</FormSelect>
+						<br />
+						<FormSelect id="select-error" className="is-error">
+							<option>Error</option>
+						</FormSelect>
 					</FormFieldset>
 
 					<FormFieldset>
@@ -162,6 +169,11 @@ var FormFields = React.createClass( {
 					<br />
 					<FormToggle
 						checked={ false }
+						disabled={ true }
+					/>
+					<br />
+					<FormToggle
+						checked={ true }
 						disabled={ true }
 					/>
 					<br />
@@ -215,7 +227,7 @@ var FormFields = React.createClass( {
 						<FormLabel>Form Phone Input</FormLabel>
 						<FormPhoneInput
 							initialCountryCode="US"
-							initialPhoneNumber="877-273-3049"
+							initialPhoneNumber="8772733049"
 							countriesList={ countriesList }
 							/>
 					</FormFieldset>

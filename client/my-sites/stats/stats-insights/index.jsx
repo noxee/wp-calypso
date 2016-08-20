@@ -2,6 +2,8 @@
 * External dependencies
 */
 import React, { PropTypes } from 'react';
+import i18n from 'i18n-calypso';
+import get from 'lodash/get';
 
 /**
  * Internal dependencies
@@ -13,52 +15,52 @@ import Comments from '../stats-comments';
 import Followers from '../stats-followers';
 import PostingActivity from '../post-trends';
 import TodaysStats from '../stats-site-overview';
-import SiteOverviewPlaceholder from 'my-sites/stats/stats-overview-placeholder';
 import StatsModule from '../stats-module';
+import StatsConnectedModule from '../stats-module/connected-list';
 import statsStrings from '../stats-strings';
 import MostPopular from 'my-sites/stats/most-popular';
 import LatestPostSummary from '../post-performance';
+import DomainTip from 'my-sites/domain-tip';
+import Main from 'components/main';
+import StatsFirstView from '../stats-first-view';
 
 export default React.createClass( {
 	displayName: 'StatsInsights',
 
 	propTypes: {
-		allTimeList: PropTypes.object.isRequired,
 		commentFollowersList: PropTypes.object.isRequired,
 		commentsList: PropTypes.object.isRequired,
 		emailFollowersList: PropTypes.object.isRequired,
 		followList: PropTypes.object.isRequired,
-		insightsList: PropTypes.object.isRequired,
-		publicizeList: PropTypes.object.isRequired,
 		site: React.PropTypes.oneOfType( [
 			React.PropTypes.bool,
 			React.PropTypes.object
 		] ),
-		statSummaryList: PropTypes.object.isRequired,
-		streakList: PropTypes.object.isRequired,
 		summaryDate: PropTypes.string,
 		wpcomFollowersList: PropTypes.object
 	},
 
 	render() {
 		const {
-			allTimeList,
 			commentFollowersList,
 			commentsList,
 			emailFollowersList,
 			followList,
-			insightsList,
-			publicizeList,
 			site,
-			statSummaryList,
-			streakList,
-			summaryDate,
 			wpcomFollowersList } = this.props;
 
 		const moduleStrings = statsStrings();
 
 		let tagsList;
-		let summaryData = statSummaryList.get( site.ID, summaryDate );
+
+		let momentSiteZone = i18n.moment();
+
+		const gmtOffset = get( site.options, 'gmt_offset', null );
+		if ( gmtOffset ) {
+			momentSiteZone = i18n.moment().utcOffset( gmtOffset );
+		}
+
+		const summaryDate = momentSiteZone.format( 'YYYY-MM-DD' );
 
 		if ( ! site.jetpack ) {
 			tagsList = <StatsModule
@@ -69,24 +71,29 @@ export default React.createClass( {
 							beforeNavigate={ this.updateScrollPosition } />;
 		}
 
+		// TODO: should be refactored into separate components
+		/* eslint-disable wpcalypso/jsx-classname-namespace */
 		return (
-			<div className="main main-column" role="main">
+			<Main>
+				<StatsFirstView />
 				<SidebarNavigation />
 				<StatsNavigation section="insights" site={ site } />
 				<div id="my-stats-content">
-					<PostingActivity streakList={ streakList } />
+					<PostingActivity />
 					<LatestPostSummary site={ site } />
 					<TodaysStats
-						site={ site }
-						summaryData={ summaryData }
+						siteId={ site ? site.ID : 0 }
+						period="day"
+						date={ summaryDate }
 						path={ '/stats/day' }
-						insights={ true }
+						title={ this.translate( 'Today\'s Stats' ) }
 					/>
-					<AllTime allTimeList={ allTimeList } />
-					<MostPopular insightsList={ insightsList } />
-					<div className="stats-nonperiodic has-recent">
-						<div className="module-list">
-							<div className="module-column">
+					<AllTime />
+					<MostPopular />
+					<DomainTip siteId={ site ? site.ID : 0 } event="stats_insights_domain" />
+					<div className="stats-insights__nonperiodic has-recent">
+						<div className="stats__module-list">
+							<div className="stats__module-column">
 								<Comments
 									path={ 'comments' }
 									site={ site }
@@ -95,23 +102,23 @@ export default React.createClass( {
 									commentFollowersList={ commentFollowersList } />
 								{ tagsList }
 							</div>
-							<div className="module-column">
+							<div className="stats__module-column">
 								<Followers
 									path={ 'followers' }
 									site={ site }
 									wpcomFollowersList={ wpcomFollowersList }
 									emailFollowersList={ emailFollowersList }
 									followList={ followList } />
-								<StatsModule
-									path={ 'publicize' }
+								<StatsConnectedModule
+									path="publicize"
 									moduleStrings={ moduleStrings.publicize }
-									site={ site }
-									dataList={ publicizeList } />
+									statType="statsPublicize" />
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
+			</Main>
 		);
+		/* eslint-enable wpcalypso/jsx-classname-namespace */
 	}
 } );

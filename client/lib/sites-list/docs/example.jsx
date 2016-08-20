@@ -6,7 +6,7 @@ var React = require( 'react' );
 /**
  * Internal dependencies
  */
-var Site = require( 'my-sites/site' ),
+var Site = require( 'blocks/site' ),
 	AllSites = require( 'my-sites/all-sites' ),
 	sites = require( 'lib/sites-list' )();
 
@@ -17,7 +17,7 @@ var Sites = React.createClass( {
 		return (
 			<div className="design-assets__group">
 				<h2>
-					<a href="/devdocs/app-components/sites">Site and All Sites</a>
+					<a href="/devdocs/blocks/sites">Site and All Sites</a>
 				</h2>
 				<Card style={ { padding: 0 } }>
 					<Site site={ sites.getPrimary() } />

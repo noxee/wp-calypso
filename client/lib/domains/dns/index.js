@@ -1,9 +1,16 @@
 /**
  * External dependencies
  */
-const includes = require( 'lodash/includes' ),
-	mapValues = require( 'lodash/mapValues' ),
-	endsWith = require( 'lodash/endsWith' );
+import endsWith from 'lodash/endsWith';
+import filter from 'lodash/filter';
+import find from 'lodash/find';
+import includes from 'lodash/includes';
+import mapValues from 'lodash/mapValues';
+import startsWith from 'lodash/startsWith';
+import trimStart from 'lodash/trimStart';
+import without from 'lodash/without';
+import matches from 'lodash/matches';
+import negate from 'lodash/negate';
 
 function validateAllFields( fieldValues, domainName ) {
 	return mapValues( fieldValues, ( value, fieldName ) => {
@@ -81,6 +88,11 @@ function getNormalizedData( record, selectedDomainName ) {
 	if ( record.target ) {
 		normalizedRecord.target = getFieldWithDot( record.target );
 	}
+	// The leading '_' in SRV's service field is a convention
+	// The record itself should not contain it
+	if ( record.service ) {
+		normalizedRecord.service = trimStart( record.service, '_' );
+	}
 
 	return normalizedRecord;
 }
@@ -89,22 +101,14 @@ function getNormalizedName( name, type, selectedDomainName ) {
 	const endsWithDomain = endsWith( name, '.' + selectedDomainName );
 
 	if ( isRootDomain( name, selectedDomainName ) && canBeRootDomain( type ) ) {
-		return '';
+		return selectedDomainName + '.';
 	}
 
 	if ( endsWithDomain ) {
-		if ( isIpRecord( type ) ) {
-			return name.replace( new RegExp( '\\.+' + selectedDomainName + '\\.?$', 'i' ), '' );
-		}
-		return getFieldWithDot( name );
-	} else if ( ! isIpRecord( type ) ) {
-		return name + '.' + selectedDomainName + '.';
+		return name.replace( new RegExp( '\\.+' + selectedDomainName + '\\.?$', 'i' ), '' );
 	}
-	return name;
-}
 
-function isIpRecord( type ) {
-	return includes( [ 'A', 'AAAA' ], type );
+	return name;
 }
 
 function isRootDomain( name, domainName ) {
@@ -118,7 +122,7 @@ function isRootDomain( name, domainName ) {
 }
 
 function canBeRootDomain( type ) {
-	return includes( [ 'MX', 'SRV', 'TXT' ], type );
+	return includes( [ 'A', 'MX', 'SRV', 'TXT' ], type );
 }
 
 function getFieldWithDot( field ) {
@@ -126,7 +130,65 @@ function getFieldWithDot( field ) {
 	return ( typeof field === 'string' && field.match( /^([a-z0-9-_]+\.)+\.?[a-z]+$/i ) ) ? field + '.' : field;
 }
 
-module.exports = {
+function isWpcomRecord( record ) {
+	return startsWith( record.id, 'wpcom:' );
+}
+
+function isRootARecord( domain ) {
+	return matches( {
+		type: 'A',
+		name: `${domain}.`
+	} );
+}
+
+function removeDuplicateWpcomRecords( domain, records ) {
+	const rootARecords = filter( records, isRootARecord( domain ) ),
+		wpcomARecord = find( rootARecords, isWpcomRecord ),
+		customARecord = find( rootARecords, negate( isWpcomRecord ) );
+
+	if ( wpcomARecord && customARecord ) {
+		return without( records, wpcomARecord );
+	}
+
+	return records;
+}
+
+function addMissingWpcomRecords( domain, records ) {
+	const rootARecords = filter( records, isRootARecord( domain ) );
+
+	if ( rootARecords.length === 0 ) {
+		const defaultRootARecord = {
+			domain,
+			id: `wpcom:A:${domain}.:${domain}`,
+			name: `${domain}.`,
+			protected_field: true,
+			type: 'A'
+		};
+
+		return records.concat( [ defaultRootARecord ] );
+	}
+
+	return records;
+}
+
+function isBeingProcessed( record ) {
+	return record.isBeingDeleted || record.isBeingAdded;
+}
+
+function isDeletingLastMXRecord( recordToDelete, records ) {
+	const currentMXRecords = filter( records, { type: 'MX' } );
+
+	return (
+		recordToDelete.type === 'MX' &&
+		currentMXRecords.length === 1
+	);
+}
+
+export {
+	addMissingWpcomRecords,
+	getNormalizedData,
+	removeDuplicateWpcomRecords,
 	validateAllFields,
-	getNormalizedData
+	isBeingProcessed,
+	isDeletingLastMXRecord
 };

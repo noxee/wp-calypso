@@ -44,15 +44,23 @@
 	}
 
 	.domain-product-price {
-		@include breakpoint( ">660px" ) {
+		float: left;
+		margin-bottom: 20px;
+		min-width: 0;
+
+		@include breakpoint( ">960px" ) {
 			float: right;
 			margin-top: -5px;
+			margin-bottom: 0;
 		}
 	}
 }
 
 .site-redirect-step__domain-description {
-	@include breakpoint( ">660px" ) {
+	word-break: break-word;
+
+	@include breakpoint( ">960px" ) {
+		max-width: 75%;
 		float: left;
 		margin-bottom: 20px;
 	}
@@ -184,17 +192,12 @@ form.google-apps-dialog {
 		margin-bottom: 20px;
 	}
 
-	.google-apps-dialog__user-email {
-		margin-bottom: 9px;
-	}
-
 	.google-apps-dialog__user-first-name {
-		margin-bottom: 9px;
-
 		@include breakpoint( ">660px" ) {
 			display: inline-block;
 			margin: 0 4px 0 0;
 			width: calc( 50% - 4px );
+			vertical-align: top;
 		}
 	}
 
@@ -203,6 +206,7 @@ form.google-apps-dialog {
 			display: inline-block;
 			margin: 0 0 0 5px;
 			width: calc( 50% - 5px );
+			vertical-align: top;
 		}
 	}
 

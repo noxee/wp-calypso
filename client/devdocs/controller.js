@@ -7,6 +7,7 @@ import qs from 'qs';
 import debounce from 'lodash/debounce';
 import page from 'page';
 import { Provider as ReduxProvider } from 'react-redux';
+import url from 'url';
 
 /**
  * Internal dependencies
@@ -14,7 +15,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import DocsComponent from './main';
 import SingleDocComponent from './doc';
 import DesignAssetsComponent from './design';
-import AppComponents from './design/app-components';
+import Blocks from './design/blocks';
 import Typography from './design/typography';
 import DevWelcome from './welcome';
 import Sidebar from './sidebar';
@@ -43,14 +44,22 @@ const devdocs = {
 	 */
 	devdocs: function( context ) {
 		function onSearchChange( searchTerm ) {
-			var query = context.query;
+			let query = context.query,
+				url = context.pathname;
+
 			if ( searchTerm ) {
 				query.term = searchTerm;
 			} else {
 				delete query.term;
 			}
 
-			page.replace( context.pathname + '?' + qs.stringify( query ).replace( /%20/g, '+' ),
+			const queryString = qs.stringify( query ).replace( /%20/g, '+' ).trim();
+
+			if ( queryString ) {
+				url += '?' + queryString;
+			}
+
+			page.replace( url,
 				context.state,
 				false,
 				false );
@@ -84,18 +93,20 @@ const devdocs = {
 	// UI components
 	design: function( context ) {
 		ReactDom.render(
-			React.createElement( DesignAssetsComponent, {
-				component: context.params.component
-			} ),
+			React.createElement( ReduxProvider, { store: context.store },
+				React.createElement( DesignAssetsComponent, {
+					component: context.params.component
+				} )
+			),
 			document.getElementById( 'primary' )
 		);
 	},
 
-	// App components
-	appComponents: function( context ) {
+	// App Blocks
+	blocks: function( context ) {
 		ReactDom.render(
 			React.createElement( ReduxProvider, { store: context.store },
-				React.createElement( AppComponents, {
+				React.createElement( Blocks, {
 					component: context.params.component
 				} )
 			),
@@ -122,6 +133,9 @@ const devdocs = {
 	},
 
 	pleaseLogIn: function( context ) {
+		const currentUrl = url.parse( location.href );
+		const redirectUrl = currentUrl.protocol + '//' + currentUrl.host + '/devdocs/welcome';
+
 		ReactDom.unmountComponentAtNode( document.getElementById( 'secondary' ) );
 
 		ReactDom.render(
@@ -129,7 +143,7 @@ const devdocs = {
 				title: 'Log In to start hacking',
 				line: 'Required to access the WordPress.com API',
 				action: 'Log In to WordPress.com',
-				actionURL: 'https://wordpress.com/wp-login.php?redirect_to=http%3A%2F%2Fcalypso.localhost%3A3000/devdocs/welcome',
+				actionURL: 'https://wordpress.com/wp-login.php?redirect_to=' + encodeURIComponent( redirectUrl ),
 				secondaryAction: 'Register',
 				secondaryActionURL: '/start/developer',
 				illustration: '/calypso/images/drake/drake-nosites.svg'

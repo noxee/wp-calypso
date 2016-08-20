@@ -2,6 +2,7 @@
  * External dependencies
  */
 var debug = require( 'debug' )( 'calypso:community-translator' ),
+	i18n = require( 'i18n-calypso' ),
 	React = require( 'react' );
 
 /**
@@ -11,7 +12,6 @@ var config = require( 'config' ),
 	loadScript = require( 'lib/load-script' ),
 	user = require( 'lib/user' )(),
 	userSettings = require( 'lib/user-settings' ),
-	i18n = require( 'lib/mixins/i18n' ),
 	isMobile = require( 'lib/viewport' ).isMobile,
 	analytics = require( 'lib/analytics' ),
 	hasTouch = require( 'lib/touch-detect' ).hasTouch;
@@ -20,7 +20,7 @@ var config = require( 'config' ),
  * Local variables
  */
 var communityTranslatorBaseUrl = 'https://widgets.wp.com/community-translator/',
-	communityTranslatorVersion = '1',
+	communityTranslatorVersion = '1.160728',
 	translationDataFromPage = {
 		localeCode: 'en',
 		languageName: 'English',
@@ -50,7 +50,7 @@ communityTranslatorJumpstart = {
 
 		currentUser = user.get();
 
-		if ( 'en' === currentUser.localeSlug || ! currentUser.localeSlug ) {
+		if ( ! currentUser || 'en' === currentUser.localeSlug || ! currentUser.localeSlug ) {
 			return false;
 		}
 
@@ -87,7 +87,7 @@ communityTranslatorJumpstart = {
 		props = { className: 'translatable' };
 
 		if ( 'string' === typeof originalFromPage ) {
-			props.value = originalFromPage;
+			props[ 'data-singular' ] = originalFromPage;
 		} else {
 			debug( 'unknown original format' );
 			return displayedTranslationFromPage;

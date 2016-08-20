@@ -5,7 +5,7 @@ var React = require( 'react' ),
 var FeedHeader = require( 'reader/feed-header' ),
 	FeedFeatured = require( './featured' ),
 	EmptyContent = require( './empty' ),
-	FollowingStream = require( 'reader/following-stream' ),
+	Stream = require( 'reader/stream' ),
 	HeaderBack = require( 'reader/header-back' ),
 	SiteStore = require( 'lib/reader-site-store' ),
 	SiteStoreActions = require( 'lib/reader-site-store/actions' ),
@@ -21,7 +21,7 @@ var FeedHeader = require( 'reader/feed-header' ),
 function checkForRedirect( site ) {
 	if ( site && site.get( 'prefer_feed' ) && site.get( 'feed_ID' ) ) {
 		setTimeout( function() {
-			page.replace( '/read/feeds/' + site.get( 'feed_ID' ) )
+			page.replace( '/read/feeds/' + site.get( 'feed_ID' ) );
 		}, 0 );
 	}
 }
@@ -89,7 +89,7 @@ const SiteStream = React.createClass( {
 			feed = FeedStore.get( site.get( 'feed_ID' ) );
 			if ( ! feed ) {
 				setTimeout( () => {
-					FeedStoreActions.fetch( site.get( 'feed_ID' ) )
+					FeedStoreActions.fetch( site.get( 'feed_ID' ) );
 				}, 0 );
 			} else if ( feed.state !== FeedState.COMPLETE ) {
 				feed = null;
@@ -142,11 +142,11 @@ const SiteStream = React.createClass( {
 		}
 
 		return (
-			<FollowingStream { ...this.props } listName={ title } emptyContent={ emptyContent } showPostHeader={ false }>
+			<Stream { ...this.props } listName={ title } emptyContent={ emptyContent } showPostHeader={ false }>
 				{ this.props.showBack && <HeaderBack /> }
 				<FeedHeader site={ this.state.site } feed={ this.state.feed }/>
 				{ featuredContent }
-			</FollowingStream>
+			</Stream>
 
 		);
 	}
